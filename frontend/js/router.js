@@ -69,6 +69,18 @@ export const router = {
       backBtn().hidden = out.showBack === false;
     }
 
+    // Highlight the active bottom-nav item.
+    const navKey =
+      path === "/catalog" ? "catalog" :
+      path === "/profile" ? "profile" :
+      path === "/history" ? "profile" :
+      ["/", "/entry", "/method", "/questions", "/result"].includes(path) ? "home" :
+      null;
+    document.querySelectorAll(".bottom-nav__item").forEach((a) => {
+      if (a.dataset.nav === navKey) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+
     // Move focus to the view for screen-reader + keyboard users.
     main.focus({ preventScroll: true });
 

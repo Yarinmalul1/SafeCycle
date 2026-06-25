@@ -8,6 +8,8 @@ import { QuestionsView } from "./views/questions.js";
 import { ResultView } from "./views/result.js";
 import { HistoryView } from "./views/history.js";
 import { InfoView } from "./views/info.js";
+import { CatalogView } from "./views/catalog.js";
+import { ProfileView } from "./views/profile.js";
 
 const NotFoundView = {
   render() {
@@ -30,6 +32,8 @@ router
   .add("/result", ResultView)
   .add("/history", HistoryView)
   .add("/info", InfoView)
+  .add("/catalog", CatalogView)
+  .add("/profile", ProfileView)
   .setNotFound(NotFoundView);
 
 router.start();

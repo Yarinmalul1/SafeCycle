@@ -56,6 +56,22 @@
     <main id="view" class="view" tabindex="-1" aria-live="polite">
       <!-- Views are rendered here by the router -->
     </main>
+
+    <!-- Persistent bottom navigation -->
+    <nav id="bottom-nav" class="bottom-nav" aria-label="Primary">
+      <a href="#/entry" class="bottom-nav__item" data-nav="home">
+        <span class="material-symbols-outlined" aria-hidden="true">home</span>
+        <span class="bottom-nav__label">Home</span>
+      </a>
+      <a href="#/catalog" class="bottom-nav__item" data-nav="catalog">
+        <span class="material-symbols-outlined" aria-hidden="true">medical_services</span>
+        <span class="bottom-nav__label">Catalog</span>
+      </a>
+      <a href="#/profile" class="bottom-nav__item" data-nav="profile">
+        <span class="material-symbols-outlined" aria-hidden="true">person</span>
+        <span class="bottom-nav__label">Profile</span>
+      </a>
+    </nav>
   </div>
 
   <!-- Always-available escalation overlay (Talk to a clinician) -->

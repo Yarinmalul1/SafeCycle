@@ -81,6 +81,7 @@
   /* ---- Layout ---- */
   --app-max-width: 480px;
   --header-height: 64px;          /* Stitch h-16 */
+  --bottom-nav-height: 64px;      /* persistent bottom navigation */
   --touch-target: 48px;           /* Stitch touch-target-min */
 
   /* ---- Motion ---- */

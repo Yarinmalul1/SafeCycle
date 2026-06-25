@@ -63,7 +63,9 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--space-5) var(--space-4) var(--space-6);
+  /* extra bottom padding so content clears the fixed bottom nav */
+  padding: var(--space-5) var(--space-4)
+    calc(var(--bottom-nav-height) + var(--space-5));
   gap: var(--space-4);
   animation: viewIn var(--dur-base) var(--ease);
 }
@@ -394,10 +396,10 @@
   background: var(--color-primary-soft);
 }
 
-/* ---- Sticky bottom action bar ---- */
+/* ---- Sticky bottom action bar (floats above the bottom nav) ---- */
 .action-bar {
   position: sticky;
-  bottom: 0;
+  bottom: var(--bottom-nav-height);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -408,6 +410,69 @@
     var(--color-bg) 70%,
     transparent
   );
+}
+
+/* ---- Bottom navigation ---- */
+.bottom-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  height: var(--bottom-nav-height);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -4px 20px -4px rgba(138, 77, 78, 0.08);
+}
+
+.bottom-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--touch-target);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.bottom-nav__item:active {
+  transform: scale(0.94);
+}
+
+.bottom-nav__label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.bottom-nav__item[aria-current="page"] {
+  color: var(--color-primary);
+}
+
+.bottom-nav__item[aria-current="page"] .material-symbols-outlined {
+  font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24;
+}
+
+/* ---- Google sign-in button ---- */
+.btn--google {
+  background: var(--color-surface);
+  color: #3c4043;
+  border-color: var(--color-border);
+  font-weight: var(--fw-medium);
+}
+
+.btn--google:active {
+  background: var(--color-surface-alt);
+}
+
+.btn--google svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 
 /* ---- Clinician link (always visible on results) ---- */

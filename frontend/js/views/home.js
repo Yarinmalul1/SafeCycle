@@ -3,6 +3,7 @@ import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
+import { googleButton } from "../util.js";
 
 // `icon` values are Material Symbols Outlined ligature names (Stitch set).
 const SITUATIONS = [
@@ -50,9 +51,7 @@ export const HomeView = {
         <div class="spacer"></div>
 
         <div class="stack" style="gap:var(--space-3)">
-          <button id="home-google" class="btn btn--secondary btn--block">
-            Continue with Google
-          </button>
+          ${googleButton("home-google", "Sign in with Google")}
           <button id="home-clinician" class="btn btn--ghost btn--block">
             Talk to a clinician
           </button>
