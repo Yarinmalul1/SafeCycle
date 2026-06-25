@@ -5,9 +5,9 @@ import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
 
 const STATUS_META = {
-  ok: { cls: "result-header--ok", icon: "✅" },
-  warn: { cls: "result-header--warn", icon: "⚠️" },
-  danger: { cls: "result-header--danger", icon: "⛔" },
+  ok: { cls: "result-header--ok", icon: "check_circle" },
+  warn: { cls: "result-header--warn", icon: "warning" },
+  danger: { cls: "result-header--danger", icon: "medical_information" },
 };
 
 export const ResultView = {
@@ -69,12 +69,12 @@ export const ResultView = {
         body.innerHTML = `
           ${
             result._stub
-              ? `<span class="stub-badge" title="Placeholder logic">⚠ Demo guidance — not clinically reviewed</span>`
+              ? `<span class="stub-badge" title="Placeholder logic"><span class="material-symbols-outlined" aria-hidden="true">science</span> Demo guidance — not clinically reviewed</span>`
               : ""
           }
 
           <div class="result-header ${meta.cls}" role="status">
-            <span class="result-header__icon" aria-hidden="true">${meta.icon}</span>
+            <span class="result-header__icon material-symbols-outlined is-filled" aria-hidden="true">${meta.icon}</span>
             <span class="result-header__text">
               <span class="result-header__status">${result.statusLabel}</span>
               <span class="result-header__headline">${result.headline}</span>
@@ -95,7 +95,7 @@ export const ResultView = {
                 : ""
             }
             <button id="clinician-btn" class="clinician-link">
-              <span aria-hidden="true">🩺</span> Talk to a clinician
+              <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
             </button>
             <button id="restart-btn" class="btn btn--ghost btn--block">
               Start a new check
