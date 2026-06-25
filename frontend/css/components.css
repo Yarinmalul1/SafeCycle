@@ -11,7 +11,8 @@
   min-height: 100dvh;
   max-width: var(--app-max-width);
   margin: 0 auto;
-  background: var(--color-bg);
+  /* Soft warm gradient echoes the Stitch "diffusion" backdrop */
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-bg) 28%);
   /* Honor device safe areas (notches, home indicator) */
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -73,14 +74,24 @@
 }
 
 /* ---- Typography helpers ---- */
+/* Headings use the Stitch display face (Outfit); body stays Inter. */
+.title,
+.subtitle,
+.app-header__title,
+.result-header__headline,
+.choice__title {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
 .title {
   font-size: var(--fs-2xl);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   line-height: var(--lh-tight);
 }
 
 .subtitle {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-xl);
   font-weight: var(--fw-semibold);
   line-height: var(--lh-tight);
 }

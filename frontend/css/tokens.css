@@ -1,51 +1,53 @@
 /* ============================================================
-   SafeCycle — DESIGN TOKENS
+   SafeCycle — DESIGN TOKENS  (mapped from Stitch:
+   "SafeCycle Guidance Interface")
    ------------------------------------------------------------
-   ⚠️  THIS IS THE ONLY FILE TO REPLACE WITH STITCH TOKENS.
-   When you paste exported Stitch tokens, map them onto these
-   CSS custom properties (keep the same variable NAMES so the
-   rest of the app keeps working). Values below are calm,
-   neutral PLACEHOLDERS chosen to match the spec's aesthetic:
-   calm, minimal, medical, trustworthy.
+   Source of truth = the Stitch Tailwind theme. Values below are
+   transcribed from that export ("Dusty Rose" system). To re-sync
+   after a Stitch change, update the values here (keep the names).
+   The rest of the app references these variables only.
    ============================================================ */
 
 :root {
   /* ---- Color: brand / surfaces ---- */
-  --color-bg: #f7f8fa;            /* app background */
+  --color-bg: #fffaf9;            /* Warm White — app background */
   --color-surface: #ffffff;       /* cards, header */
-  --color-surface-alt: #eef1f6;   /* subtle fills */
-  --color-border: #e2e6ee;        /* hairlines */
+  --color-surface-alt: #f4eded;   /* surface-variant — subtle fills */
+  --color-border: #e0cfcf;        /* outline-variant — hairlines */
 
-  --color-primary: #3f6fd1;       /* primary action / accent */
-  --color-primary-strong: #2f55a8;
-  --color-primary-soft: #e8eefb;  /* tinted backgrounds */
+  --color-primary: #d48c8c;       /* Dusty Rose — primary action / accent */
+  --color-primary-strong: #c47374;/* pressed / darker rose */
+  --color-primary-soft: #f8eaea;  /* Soft Blush — primary-container */
   --color-on-primary: #ffffff;
 
   /* ---- Color: text ---- */
-  --color-text: #1c2430;          /* primary text */
-  --color-text-muted: #5a6573;    /* secondary text */
-  --color-text-subtle: #8a93a3;   /* hints, captions */
+  --color-text: #3d2f2f;          /* on-surface */
+  --color-text-muted: #7a6666;    /* on-surface-variant */
+  --color-text-subtle: #a38a8a;   /* hints, captions */
 
-  /* ---- Color: semantic status (always paired with text/icon) ---- */
-  --color-ok: #2e7d5b;            /* green  = protected */
-  --color-ok-bg: #e6f4ec;
-  --color-warn: #9a6a12;          /* amber  = use backup */
-  --color-warn-bg: #fdf3e0;
-  --color-danger: #b3261e;        /* red    = see a clinician */
-  --color-danger-bg: #fbeae9;
+  /* ---- Color: semantic status (soft bg + readable text) ---- */
+  --color-ok: #4a6b5d;            /* on-safe-green  = protected */
+  --color-ok-bg: #f0f7f4;         /* safe-green */
+  --color-warn: #8a6d3b;          /* on-warning-amber = use backup */
+  --color-warn-bg: #fff9f0;       /* warning-amber */
+  --color-danger: #b35c5c;        /* on-critical-red = see a clinician */
+  --color-danger-bg: #fff5f5;     /* critical-red */
+  --color-error: #ba1a1a;         /* hard error */
 
-  --color-focus: #1a73e8;         /* focus ring */
+  --color-focus: #c47374;         /* focus ring (on-brand) */
 
   /* ---- Typography ---- */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  --font-display: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
 
-  --fs-xs: 0.75rem;    /* 12 */
-  --fs-sm: 0.875rem;   /* 14 */
-  --fs-base: 1rem;     /* 16 — base, prevents iOS input zoom */
-  --fs-lg: 1.125rem;   /* 18 */
-  --fs-xl: 1.375rem;   /* 22 */
-  --fs-2xl: 1.75rem;   /* 28 */
+  --fs-xs: 0.75rem;    /* 12 — label-sm */
+  --fs-sm: 0.875rem;   /* 14 — label-md */
+  --fs-base: 1rem;     /* 16 — body-md (also prevents iOS input zoom) */
+  --fs-lg: 1.125rem;   /* 18 — body-lg */
+  --fs-xl: 1.5rem;     /* 24 — headline-md / headline-lg-mobile */
+  --fs-2xl: 2rem;      /* 32 — headline-lg */
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -54,40 +56,39 @@
 
   --lh-tight: 1.25;
   --lh-normal: 1.5;
-  --lh-relaxed: 1.65;
+  --lh-relaxed: 1.6;
 
-  /* ---- Spacing scale (4px base) ---- */
+  /* ---- Spacing scale (Stitch: base 8, gutter 24, margins) ---- */
   --space-1: 0.25rem;  /* 4  */
-  --space-2: 0.5rem;   /* 8  */
+  --space-2: 0.5rem;   /* 8  — base */
   --space-3: 0.75rem;  /* 12 */
-  --space-4: 1rem;     /* 16 */
-  --space-5: 1.5rem;   /* 24 */
+  --space-4: 1rem;     /* 16 — margin-mobile */
+  --space-5: 1.5rem;   /* 24 — gutter */
   --space-6: 2rem;     /* 32 */
-  --space-7: 3rem;     /* 48 */
+  --space-7: 2.5rem;   /* 40 — margin-desktop */
 
-  /* ---- Radius ---- */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-pill: 999px;
+  /* ---- Radius (Stitch leans soft/rounded) ---- */
+  --radius-sm: 12px;   /* lg */
+  --radius-md: 16px;   /* xl */
+  --radius-lg: 24px;   /* 2xl — cards */
+  --radius-pill: 9999px;
 
-  /* ---- Elevation ---- */
-  --shadow-sm: 0 1px 2px rgba(20, 30, 50, 0.06);
-  --shadow-md: 0 4px 16px rgba(20, 30, 50, 0.08);
-  --shadow-lg: 0 8px 28px rgba(20, 30, 50, 0.12);
+  /* ---- Elevation (rose-tinted, per Stitch) ---- */
+  --shadow-sm: 0 8px 24px rgba(212, 140, 140, 0.08);
+  --shadow-md: 0 10px 30px -10px rgba(212, 140, 140, 0.15);
+  --shadow-lg: 0 20px 40px -10px rgba(138, 77, 78, 0.18);
 
   /* ---- Layout ---- */
-  --app-max-width: 480px;         /* mobile-first; centered on larger screens */
-  --header-height: 56px;
-  --touch-target: 44px;           /* WCAG AA minimum tap size */
+  --app-max-width: 480px;
+  --header-height: 64px;          /* Stitch h-16 */
+  --touch-target: 48px;           /* Stitch touch-target-min */
 
   /* ---- Motion ---- */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
-  --dur-base: 220ms;
+  --dur-base: 300ms;              /* Stitch transitions feel slower/softer */
 }
 
-/* Respect users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-fast: 0ms;
