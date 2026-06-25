@@ -2,7 +2,7 @@
    Cache-first for the static shell so the app opens instantly and
    works offline at a basic level. API calls are never cached. */
 
-const CACHE = "safecycle-shell-v4";
+const CACHE = "safecycle-shell-v5";
 
 const SHELL = [
   "./",

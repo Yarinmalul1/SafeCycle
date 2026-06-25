@@ -69,6 +69,9 @@ export const router = {
       backBtn().hidden = out.showBack === false;
     }
 
+    // Bottom nav shows on every page except the welcome/landing page.
+    document.getElementById("bottom-nav").hidden = isHome;
+
     // Highlight the active bottom-nav item.
     const navKey =
       path === "/catalog" ? "catalog" :
