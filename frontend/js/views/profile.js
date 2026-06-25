@@ -1,5 +1,6 @@
-/* View: Profile — sign-in (Google) and account actions.
-   Auth is stubbed until Supabase Google OAuth is wired in a later step. */
+/* View: Profile — sign-in (Google), account actions, and saved-answer
+   History embedded inline. Auth + history are stubbed until Supabase
+   Google OAuth is wired in a later step. */
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
@@ -25,7 +26,8 @@ export const ProfileView = {
             <div>
               <strong>Save your guidance privately</strong>
               <p class="muted" style="margin-top:var(--space-1)">
-                Your history stays private to you. No data selling, ever.
+                Sign in and your saved answers will appear here. Private to you —
+                no data selling, ever.
               </p>
             </div>
             ${googleButton("profile-google")}
@@ -44,34 +46,61 @@ export const ProfileView = {
       };
     }
 
-    // Signed-in state
+    // Signed-in: account card + inline History.
     return {
       title: "Profile",
       html: `
         <div class="stack" style="gap:var(--space-2)">
           <h1 class="title">Your profile</h1>
         </div>
+
         <div class="card">
           <strong>${escapeHtml(user.name || "Signed in")}</strong>
           <p class="muted">${escapeHtml(user.email || "")}</p>
         </div>
-        <div class="stack">
-          <button id="profile-history" class="btn btn--secondary btn--block">
-            View saved answers
-          </button>
+
+        <h2 class="subtitle">Saved answers</h2>
+        <div id="profile-history"><p class="empty">Loading…</p></div>
+
+        <div class="stack" style="margin-top:var(--space-3)">
           <button id="profile-signout" class="btn btn--ghost btn--block">
             Sign out
           </button>
         </div>
       `,
-      onMount(el) {
-        el.querySelector("#profile-history").addEventListener("click", () =>
-          router.go("/history")
-        );
+      async onMount(el) {
         el.querySelector("#profile-signout").addEventListener("click", () => {
           state.setUser(null);
           router.go("/profile");
         });
+
+        const histEl = el.querySelector("#profile-history");
+        const sessions = await api.getHistory();
+
+        if (!sessions.length) {
+          histEl.innerHTML = `
+            <div class="empty">
+              <p class="muted">No saved answers yet.</p>
+              <button id="profile-start" class="btn btn--primary"
+                style="margin-top:var(--space-3)">Start a check</button>
+            </div>`;
+          histEl.querySelector("#profile-start").addEventListener("click", () =>
+            router.go("/entry")
+          );
+          return;
+        }
+
+        histEl.innerHTML = `<div class="list">
+          ${sessions
+            .map(
+              (s) => `
+            <button class="list-item" data-id="${escapeHtml(s.id)}">
+              <span class="choice__title">${escapeHtml(s.headline)}</span>
+              <span class="list-item__meta">${escapeHtml(s.date)} · ${escapeHtml(s.product)}</span>
+            </button>`
+            )
+            .join("")}
+        </div>`;
       },
     };
   },

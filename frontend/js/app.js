@@ -6,7 +6,6 @@ import { HomeView } from "./views/home.js";
 import { MethodView } from "./views/method.js";
 import { QuestionsView } from "./views/questions.js";
 import { ResultView } from "./views/result.js";
-import { HistoryView } from "./views/history.js";
 import { InfoView } from "./views/info.js";
 import { CatalogView } from "./views/catalog.js";
 import { ProfileView } from "./views/profile.js";
@@ -30,7 +29,6 @@ router
   .add("/method", MethodView)
   .add("/questions", QuestionsView)
   .add("/result", ResultView)
-  .add("/history", HistoryView)
   .add("/info", InfoView)
   .add("/catalog", CatalogView)
   .add("/profile", ProfileView)

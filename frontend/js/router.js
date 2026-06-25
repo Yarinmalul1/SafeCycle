@@ -73,7 +73,6 @@ export const router = {
     const navKey =
       path === "/catalog" ? "catalog" :
       path === "/profile" ? "profile" :
-      path === "/history" ? "profile" :
       ["/", "/entry", "/method", "/questions", "/result"].includes(path) ? "home" :
       null;
     document.querySelectorAll(".bottom-nav__item").forEach((a) => {

@@ -61,7 +61,7 @@ export const HomeView = {
             No sign-up required.</span>
           </p>
           <p class="subtle" style="text-align:center">
-            <a href="#/history">Saved answers</a>
+            <a href="#/profile">Saved answers</a>
             &nbsp;·&nbsp;
             <a href="#/info">How it works & sources</a>
           </p>
