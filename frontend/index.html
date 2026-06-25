@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+  />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="Real-time, step-by-step guidance for hormonal contraception. Based on medical guidelines. Not a diagnosis." />
+
+  <!-- iOS / PWA: behave like a native, full-screen app -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="SafeCycle" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <title>SafeCycle</title>
+
+  <!-- Token layer first: this is the ONLY file to replace with Stitch tokens -->
+  <link rel="stylesheet" href="./css/tokens.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+</head>
+<body>
+  <!-- App shell: fixed header + scrollable view region + safe-area aware -->
+  <div id="app" class="app-shell">
+    <header id="app-header" class="app-header" hidden>
+      <button
+        type="button"
+        id="back-btn"
+        class="icon-btn"
+        aria-label="Go back"
+        hidden
+      >
+        <span aria-hidden="true">&larr;</span>
+      </button>
+      <span id="app-title" class="app-header__title">SafeCycle</span>
+      <span class="app-header__spacer"></span>
+    </header>
+
+    <main id="view" class="view" tabindex="-1" aria-live="polite">
+      <!-- Views are rendered here by the router -->
+    </main>
+  </div>
+
+  <!-- Always-available escalation overlay (Talk to a clinician) -->
+  <div id="overlay-root"></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
