@@ -108,7 +108,7 @@ export const ResultView = {
         );
         body.querySelector("#restart-btn").addEventListener("click", () => {
           state.reset();
-          router.go("/");
+          router.go("/entry");
         });
 
         const saveBtn = body.querySelector("#save-btn");

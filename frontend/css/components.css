@@ -496,6 +496,84 @@
   padding: var(--space-6) var(--space-4);
 }
 
+/* ---- Welcome / landing ---- */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  text-align: center;
+  align-items: center;
+  padding-top: var(--space-6);
+}
+
+.welcome .lead,
+.welcome__tagline {
+  max-width: 34ch;
+}
+
+.welcome__title {
+  margin-top: var(--space-2);
+}
+
+.welcome .stack {
+  width: 100%;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.hero-badge .material-symbols-outlined {
+  font-size: 1.125rem;
+}
+
+/* Trust grid (bento) */
+.bento {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.bento__card {
+  text-align: left;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.bento__icon {
+  color: var(--color-primary);
+  font-size: 1.75rem;
+}
+
+.bento__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary-strong);
+  margin: var(--space-2) 0 var(--space-1);
+}
+
+.bento__desc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
 /* ---- Stub badge: marks placeholder medical/data content ---- */
 .stub-badge {
   display: inline-flex;

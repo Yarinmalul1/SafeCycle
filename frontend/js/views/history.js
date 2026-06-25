@@ -36,7 +36,7 @@ export const HistoryView = {
               style="margin-top:var(--space-4)">Start a check</button>
           </div>`;
           body.querySelector("#hist-new").addEventListener("click", () =>
-            router.go("/")
+            router.go("/entry")
           );
           return;
         }
