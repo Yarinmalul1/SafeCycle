@@ -20,7 +20,7 @@ export const MethodView = {
             (m) => `
             <button class="choice" data-method="${m.id}"
               aria-pressed="${chosen === m.id}">
-              <span class="choice__icon" aria-hidden="true">${m.icon}</span>
+              <span class="choice__icon material-symbols-outlined" aria-hidden="true">${m.icon}</span>
               <span class="choice__body">
                 <span class="choice__title">${m.label}</span>
                 <span class="choice__desc">${m.desc}</span>

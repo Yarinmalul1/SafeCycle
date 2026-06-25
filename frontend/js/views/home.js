@@ -4,11 +4,12 @@ import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
 
+// `icon` values are Material Symbols Outlined ligature names (Stitch set).
 const SITUATIONS = [
-  { id: "missed-pill", icon: "💊", title: "I missed a pill", desc: "Forgot one or more active pills" },
-  { id: "late-dose", icon: "⏰", title: "I'm late taking it", desc: "Took it late, or not sure how late" },
-  { id: "switching", icon: "🔄", title: "I'm switching methods", desc: "Changing pill, ring, or patch" },
-  { id: "unsure", icon: "❓", title: "Something else", desc: "Not sure how to describe it" },
+  { id: "missed-pill", icon: "event_busy", title: "I missed a pill", desc: "Forgot one or more active pills" },
+  { id: "late-dose", icon: "schedule", title: "I'm late taking it", desc: "Took it late, or not sure how late" },
+  { id: "switching", icon: "published_with_changes", title: "I'm switching methods", desc: "Changing pill, ring, or patch" },
+  { id: "unsure", icon: "help_outline", title: "Something else", desc: "Not sure how to describe it" },
 ];
 
 export const HomeView = {
@@ -37,7 +38,7 @@ export const HomeView = {
           ${SITUATIONS.map(
             (s) => `
             <button class="choice" data-situation="${s.id}">
-              <span class="choice__icon" aria-hidden="true">${s.icon}</span>
+              <span class="choice__icon material-symbols-outlined" aria-hidden="true">${s.icon}</span>
               <span class="choice__body">
                 <span class="choice__title">${s.title}</span>
                 <span class="choice__desc">${s.desc}</span>
@@ -56,7 +57,7 @@ export const HomeView = {
             Talk to a clinician
           </button>
           <p class="trust-line">
-            <span aria-hidden="true">🔒</span>
+            <span class="material-symbols-outlined" aria-hidden="true">lock</span>
             <span>Real guidance based on medical guidelines. Not a diagnosis.
             No sign-up required.</span>
           </p>

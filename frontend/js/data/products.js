@@ -9,14 +9,15 @@
    `type`:  "combined" (estrogen+progestogen) | "progestogen-only" (POP)
    `userExplainer`: plain-language leaflet line shown to the user. */
 
+// `icon` values are Material Symbols Outlined ligature names (Stitch set).
 export const METHODS = [
-  { id: "pill", label: "Pill", icon: "💊", desc: "Daily oral contraceptive" },
-  { id: "ring", label: "Ring", icon: "⭕", desc: "Vaginal ring" },
-  { id: "patch", label: "Patch", icon: "🩹", desc: "Skin patch" },
+  { id: "pill", label: "Pill", icon: "medication", desc: "Daily oral contraceptive" },
+  { id: "ring", label: "Ring", icon: "radio_button_unchecked", desc: "Vaginal ring" },
+  { id: "patch", label: "Patch", icon: "layers", desc: "Skin patch" },
   {
     id: "unknown",
     label: "I don't know",
-    icon: "❓",
+    icon: "question_mark",
     desc: "We'll use the safest, most cautious guidance",
   },
 ];
