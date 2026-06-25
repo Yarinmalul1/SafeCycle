@@ -2,6 +2,8 @@
    Brand hero + "Start privately" → entry, "Learn how it works" → info. */
 import { state } from "../state.js";
 import { router } from "../router.js";
+import { api } from "../api.js";
+import { googleButton } from "../util.js";
 
 const TRUST = [
   {
@@ -47,6 +49,8 @@ export const WelcomeView = {
             <button id="welcome-learn" class="btn btn--secondary btn--block">
               Learn how SafeCycle works
             </button>
+            ${googleButton("welcome-google")}
+            <p class="subtle">Optional — sign in to save your answers.</p>
           </div>
 
           <div class="bento">
@@ -72,6 +76,10 @@ export const WelcomeView = {
         el.querySelector("#welcome-learn").addEventListener("click", () =>
           router.go("/info")
         );
+        el.querySelector("#welcome-google").addEventListener("click", async () => {
+          const res = await api.signInWithGoogle();
+          if (!res.ok) alert(res.reason || "Sign-in is coming soon.");
+        });
       },
     };
   },
