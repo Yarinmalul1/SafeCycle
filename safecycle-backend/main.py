@@ -2,6 +2,13 @@
 
 SafeCycle is a contraception guidance app. This service exposes:
   - GET  /health           : liveness check
+  - POST /api/parse-input  : Input Parser role — turns a user's free-text
+                             description of a contraception scenario into a
+                             structured object for downstream guidance logic.
+
+Note: the Input Parser only *extracts and structures* what the user said. It
+does not provide medical advice or risk assessment — that is the job of later
+stages in the SafeCycle agent pipeline.
 """
 
 from __future__ import annotations
@@ -9,8 +16,9 @@ from __future__ import annotations
 import os
 from typing import Optional
 
+import anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -23,6 +31,10 @@ app = FastAPI(
     description="Contraception guidance, made clear.",
     version="0.1.0",
 )
+
+# A single client is created once and reused. It reads ANTHROPIC_API_KEY from
+# the environment (loaded from .env above).
+client = anthropic.Anthropic()
 
 
 # --------------------------------------------------------------------------- #
@@ -80,3 +92,47 @@ class ParsedScenario(BaseModel):
         description="A single question to ask the user when essential information "
         "is missing or ambiguous; null when the scenario is clear enough.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# Input Parser role — endpoint
+# --------------------------------------------------------------------------- #
+PARSER_SYSTEM = (
+    "You are the Input Parser for SafeCycle, a contraception guidance app. "
+    "Your only job is to convert the user's free-text description of a "
+    "contraception scenario into the structured schema. "
+    "Rules:\n"
+    "- Normalize the product name to lowercase (e.g. 'Yasmin' -> 'yasmin').\n"
+    "- Only extract values the user actually states or clearly implies; never "
+    "invent timing, counts, or products. Leave unmentioned fields null.\n"
+    "- 'hoursLate' is for a pill taken late; 'pillsMissed' is for pills fully "
+    "skipped. These are different — do not conflate them.\n"
+    "- Set 'confidence' to reflect how certain you are about the extraction "
+    "(1.0 = explicit and unambiguous, lower when you had to infer).\n"
+    "- If essential information is missing or ambiguous (e.g. no product, or it "
+    "is unclear whether a pill was late vs. missed), set 'clarifyingQuestion' to "
+    "one concise question. Otherwise set it to null.\n"
+    "Do NOT give medical advice, risk levels, or recommendations — only parse."
+)
+
+
+@app.post("/api/parse-input", response_model=ParsedScenario)
+def parse_input(req: ParseInputRequest) -> ParsedScenario:
+    """Parse a user's contraception scenario into a structured object."""
+    try:
+        response = client.messages.parse(
+            model=MODEL,
+            max_tokens=1024,
+            system=PARSER_SYSTEM,
+            messages=[{"role": "user", "content": req.userInput}],
+            output_format=ParsedScenario,
+        )
+    except anthropic.APIStatusError as exc:
+        raise HTTPException(status_code=502, detail=f"LLM error: {exc.message}") from exc
+    except anthropic.APIConnectionError as exc:
+        raise HTTPException(status_code=503, detail="Could not reach the LLM.") from exc
+
+    if response.stop_reason == "refusal":
+        raise HTTPException(status_code=422, detail="Request was declined.")
+
+    return response.parsed_output
