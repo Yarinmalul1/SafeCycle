@@ -10,6 +10,38 @@ const STATUS_META = {
   danger: { cls: "result-header--danger", icon: "medical_information" },
 };
 
+const addDays = (d, n) => {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+};
+const fmtDate = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const fmtDay = (d) => d.toLocaleDateString(undefined, { weekday: "short" });
+
+/* Day-by-day timeline derived from the guidance result. */
+function buildTimeline(result) {
+  if (result.escalate) return []; // urgent cases skip the calendar
+  const today = new Date();
+  const tomorrow = addDays(today, 1);
+  const primary = result.steps.find((s) => s.primary) || result.steps[0];
+  const rows = [
+    { day: "Today", date: fmtDate(today), action: primary ? primary.text : "Follow the steps above" },
+  ];
+
+  if (result.backup && result.backup.needed) {
+    const days = result.backup.days || 7;
+    const backupEnd = addDays(today, days);
+    const protectedDate = addDays(today, days + 1);
+    rows.push({ day: "Tomorrow", date: fmtDate(tomorrow), action: "Take your next pill at the usual time" });
+    rows.push({ day: `${days} days`, date: `${fmtDate(tomorrow)}–${fmtDate(backupEnd)}`, action: `Use backup protection (${result.backup.method})` });
+    rows.push({ day: fmtDay(protectedDate), date: fmtDate(protectedDate), action: "You're protected again", ok: true });
+  } else {
+    rows.push({ day: "Tomorrow", date: fmtDate(tomorrow), action: "Continue your pack as normal" });
+    rows.push({ day: "Status", date: "", action: "No backup needed — you're protected", ok: true });
+  }
+  return rows;
+}
+
 export const ResultView = {
   render() {
     const s = state.session;
@@ -63,6 +95,25 @@ export const ResultView = {
                </div>`
             : "";
 
+        const timeline = buildTimeline(result);
+        const timelineHtml = timeline.length
+          ? `<h2 class="subtitle" style="margin-top:var(--space-3)">Your timeline</h2>
+             <ul class="timeline">
+               ${timeline
+                 .map(
+                   (r) => `
+                 <li class="timeline__row ${r.ok ? "timeline__row--ok" : ""}">
+                   <span class="timeline__date">
+                     <strong>${r.day}</strong>
+                     ${r.date ? `<span>${r.date}</span>` : ""}
+                   </span>
+                   <span class="timeline__action">${r.action}</span>
+                 </li>`
+                 )
+                 .join("")}
+             </ul>`
+          : "";
+
         el.querySelector("#result-loading").hidden = true;
         const body = el.querySelector("#result-body");
         body.hidden = false;
@@ -86,20 +137,23 @@ export const ResultView = {
 
           ${backupHtml}
 
+          ${timelineHtml}
+
           <p class="disclaimer">${result.disclaimer}</p>
 
           <div class="action-bar">
-            ${
-              loggedIn
-                ? `<button id="save-btn" class="btn btn--secondary btn--block">Save this answer</button>`
-                : ""
-            }
+            <button id="gcal-btn" class="btn btn--secondary btn--block">
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_add_on</span>
+              Add to Google Calendar
+            </button>
+            <button id="savetl-btn" class="btn btn--secondary btn--block">Save to timeline</button>
             <button id="clinician-btn" class="clinician-link">
               <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
             </button>
-            <button id="restart-btn" class="btn btn--ghost btn--block">
-              Start a new check
+            <button id="restart-btn" class="btn btn--primary btn--block">
+              Start another conversation
             </button>
+            <button id="dash-btn" class="btn btn--ghost btn--block">Back to dashboard</button>
           </div>
         `;
 
@@ -110,16 +164,24 @@ export const ResultView = {
           state.reset();
           router.go("/entry");
         });
+        body.querySelector("#dash-btn").addEventListener("click", () =>
+          router.go("/dashboard")
+        );
+        body.querySelector("#gcal-btn").addEventListener("click", () =>
+          alert("Google Calendar sync is coming soon.")
+        );
 
-        const saveBtn = body.querySelector("#save-btn");
-        if (saveBtn) {
-          saveBtn.addEventListener("click", async () => {
-            saveBtn.disabled = true;
-            saveBtn.textContent = "Saving…";
-            await api.saveSession(s);
-            saveBtn.textContent = "Saved ✓";
-          });
-        }
+        const saveBtn = body.querySelector("#savetl-btn");
+        saveBtn.addEventListener("click", async () => {
+          if (!loggedIn) {
+            alert("Sign in on your profile to save answers to your timeline.");
+            return;
+          }
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Saving…";
+          await api.saveSession(s);
+          saveBtn.textContent = "Saved ✓";
+        });
       },
     };
   },

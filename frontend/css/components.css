@@ -406,6 +406,57 @@
   background: var(--color-primary-soft);
 }
 
+/* ---- Result timeline (day-by-day calendar) ---- */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.timeline__row {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline__row:last-child {
+  border-bottom: none;
+}
+
+.timeline__date {
+  flex: 0 0 84px;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.timeline__date strong {
+  color: var(--color-text);
+}
+
+.timeline__action {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.timeline__row--ok {
+  background: var(--color-ok-bg);
+}
+
+.timeline__row--ok .timeline__action,
+.timeline__row--ok .timeline__date strong {
+  color: var(--color-ok);
+  font-weight: var(--fw-semibold);
+}
+
 /* ---- Sticky bottom action bar (floats above the bottom nav) ---- */
 .action-bar {
   position: sticky;
