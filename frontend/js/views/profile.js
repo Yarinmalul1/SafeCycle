@@ -5,6 +5,7 @@ import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { googleButton, escapeHtml } from "../util.js";
+import { toast } from "../toast.js";
 
 export const ProfileView = {
   render() {
@@ -40,7 +41,7 @@ export const ProfileView = {
         onMount(el) {
           el.querySelector("#profile-google").addEventListener("click", async () => {
             const res = await api.signInWithGoogle();
-            if (!res.ok) alert(res.reason || "Sign-in is coming soon.");
+            if (!res.ok) toast(res.reason || "Sign-in is coming soon.");
           });
         },
       };

@@ -3,6 +3,7 @@ import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
+import { toast } from "../toast.js";
 
 const STATUS_META = {
   ok: { cls: "result-header--ok", icon: "check_circle" },
@@ -168,13 +169,13 @@ export const ResultView = {
           router.go("/dashboard")
         );
         body.querySelector("#gcal-btn").addEventListener("click", () =>
-          alert("Google Calendar sync is coming soon.")
+          toast("Google Calendar sync is coming soon.")
         );
 
         const saveBtn = body.querySelector("#savetl-btn");
         saveBtn.addEventListener("click", async () => {
           if (!loggedIn) {
-            alert("Sign in on your profile to save answers to your timeline.");
+            toast("Sign in on your profile to save answers to your timeline.");
             return;
           }
           saveBtn.disabled = true;

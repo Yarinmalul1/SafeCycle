@@ -4,6 +4,7 @@ import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { googleButton } from "../util.js";
+import { toast } from "../toast.js";
 
 const TRUST = [
   {
@@ -78,7 +79,7 @@ export const WelcomeView = {
         );
         el.querySelector("#welcome-google").addEventListener("click", async () => {
           const res = await api.signInWithGoogle();
-          if (!res.ok) alert(res.reason || "Sign-in is coming soon.");
+          if (!res.ok) toast(res.reason || "Sign-in is coming soon.");
         });
       },
     };
