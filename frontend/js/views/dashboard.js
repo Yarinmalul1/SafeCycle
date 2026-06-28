@@ -4,6 +4,7 @@
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { escapeHtml } from "../util.js";
+import { toast } from "../toast.js";
 
 function firstName() {
   const n = state.user?.name;
@@ -65,7 +66,7 @@ export const DashboardView = {
           btn.addEventListener("click", () => {
             const card = CARDS[Number(btn.dataset.card)];
             if (card.go) router.go(card.go);
-            else alert(`${card.title} is coming soon.`);
+            else toast(`${card.title} is coming soon.`);
           })
         );
       },

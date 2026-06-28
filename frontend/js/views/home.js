@@ -4,6 +4,7 @@ import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
 import { googleButton } from "../util.js";
+import { toast } from "../toast.js";
 
 // `icon` values are Material Symbols Outlined ligature names (Stitch set).
 const SITUATIONS = [
@@ -94,7 +95,7 @@ export const HomeView = {
 
         el.querySelector("#home-google").addEventListener("click", async () => {
           const res = await api.signInWithGoogle();
-          if (!res.ok) alert(res.reason || "Sign-in is coming soon.");
+          if (!res.ok) toast(res.reason || "Sign-in is coming soon.");
         });
 
         el.querySelector("#home-clinician").addEventListener("click", () =>

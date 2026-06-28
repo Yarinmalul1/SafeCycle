@@ -601,6 +601,34 @@
   font-weight: var(--fw-semibold);
 }
 
+/* ---- Toast ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--bottom-nav-height) + var(--space-4) + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(12px);
+  z-index: 120;
+  max-width: calc(var(--app-max-width) - 2 * var(--space-4));
+  width: max-content;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transition: opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+
+.toast--in {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 /* ---- Overlay (escalation) ---- */
 .overlay {
   position: fixed;

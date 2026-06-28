@@ -61,13 +61,15 @@ export const router = {
     main.innerHTML = out.html;
     main.scrollTop = 0;
 
-    // Header: home has no chrome; inner pages get a titled bar + back.
+    // Header: home has no chrome; inner pages get the brand bar + back.
+    // The visible wordmark stays "SafeCycle" (brand); page context lives in
+    // each view's own <h1> and in the browser tab title.
     const isHome = path === "/";
     headerEl().hidden = isHome;
     if (!isHome) {
-      titleEl().textContent = out.title || "SafeCycle";
       backBtn().hidden = out.showBack === false;
     }
+    document.title = out.title ? `${out.title} · SafeCycle` : "SafeCycle";
 
     // Bottom nav shows on every page except the welcome/landing page.
     document.getElementById("bottom-nav").hidden = isHome;
