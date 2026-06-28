@@ -38,11 +38,15 @@ router
 
 router.start();
 
-// PWA: register the service worker (basic offline shell).
+// Service worker is DISABLED during active development so changes show
+// immediately (no stale cache). This also unregisters any worker a browser
+// already installed and clears its caches. Re-enable for production PWA/offline.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {
-      /* offline support is optional; ignore failures */
-    });
-  });
+  navigator.serviceWorker
+    .getRegistrations()
+    .then((regs) => regs.forEach((r) => r.unregister()))
+    .catch(() => {});
+}
+if (window.caches) {
+  caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
 }
