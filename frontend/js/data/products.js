@@ -1,6 +1,6 @@
-/* SafeCycle — product catalog (STUB / partial seed).
+/* SafeCycle - product catalog (STUB / partial seed).
    ------------------------------------------------------------
-   ⚠️  This is a small, illustrative subset — NOT a complete or
+   ⚠️  This is a small, illustrative subset - NOT a complete or
    clinically-reviewed catalog. The real catalog (30+ pills + ring
    + patch, each with its own rules) lives in Supabase and is seeded
    in the Supabase step. Each product needs a clinician-reviewed
@@ -34,7 +34,7 @@ export const PILLS = [
   { id: "cilest", name: "Cilest", type: "combined", regimen: "21+7", userExplainer: "21 active + 7 inactive days." },
   { id: "loestrin", name: "Loestrin", type: "combined", regimen: "21+7", userExplainer: "21 active + 7 inactive days." },
 
-  // ---- Progestogen-only pills (POP) — different, stricter timing rules ----
+  // ---- Progestogen-only pills (POP) - different, stricter timing rules ----
   { id: "cerazette", name: "Cerazette (desogestrel)", type: "progestogen-only", regimen: "continuous", userExplainer: "Taken every day, no break. 12-hour window." },
   { id: "noriday", name: "Noriday (norethisterone)", type: "progestogen-only", regimen: "continuous", userExplainer: "Taken every day, no break. 3-hour window." },
   { id: "hana", name: "Hana / Lovima (desogestrel)", type: "progestogen-only", regimen: "continuous", userExplainer: "Taken every day, no break. 12-hour window." },

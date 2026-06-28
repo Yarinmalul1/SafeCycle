@@ -1,4 +1,4 @@
-/* SafeCycle — escalation overlay ("Talk to a person").
+/* SafeCycle - escalation overlay ("Talk to a person").
    Always reachable. Hard-routes urgent cases. Rendered into
    #overlay-root so it floats above any view. */
 

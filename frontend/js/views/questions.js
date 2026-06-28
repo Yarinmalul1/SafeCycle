@@ -1,4 +1,4 @@
-/* View: Guided questions — one question per screen, adaptive.
+/* View: Guided questions - one question per screen, adaptive.
    Each question is its own history entry (#/questions?q=N) so the
    browser/back button naturally returns to the previous question
    for editing, per spec. */

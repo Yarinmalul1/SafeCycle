@@ -1,4 +1,4 @@
-/* SafeCycle — app bootstrap.
+/* SafeCycle - app bootstrap.
    Registers routes, starts the router, installs the PWA service worker. */
 import { router } from "./router.js";
 import { WelcomeView } from "./views/welcome.js";

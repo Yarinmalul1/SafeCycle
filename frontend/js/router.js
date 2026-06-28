@@ -1,4 +1,4 @@
-/* SafeCycle — minimal hash-based SPA router.
+/* SafeCycle - minimal hash-based SPA router.
    No page reloads. Each route maps to a view module that exports
    `render(params)` -> { html, title, showBack, onMount? }. */
 

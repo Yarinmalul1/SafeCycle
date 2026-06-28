@@ -1,4 +1,4 @@
-/* View: Dashboard — the main landing after the welcome screen.
+/* View: Dashboard - the main landing after the welcome screen.
    Welcome banner + primary CTA + grid of update cards.
    Uses the existing Dusty Rose card styling. */
 import { state } from "../state.js";

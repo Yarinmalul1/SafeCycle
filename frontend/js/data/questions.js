@@ -1,4 +1,4 @@
-/* SafeCycle — guided question flow + STUB logic engine.
+/* SafeCycle - guided question flow + STUB logic engine.
    ============================================================
    ⚠️⚠️  NOT CLINICALLY REVIEWED. PLACEHOLDER LOGIC ONLY.  ⚠️⚠️
    The real medical decision-making is a deterministic engine on
@@ -30,7 +30,7 @@ export function getQuestions(session) {
       options: [
         { value: "1", label: "One pill" },
         { value: "2+", label: "Two or more" },
-        { value: "0", label: "None — I'm just unsure" },
+        { value: "0", label: "None - I'm just unsure" },
       ],
     });
 
@@ -39,7 +39,7 @@ export function getQuestions(session) {
       text: "How late are you (since it was due)?",
       options: [
         { value: "<24", label: "Less than 24 hours" },
-        { value: "24-48", label: "24–48 hours" },
+        { value: "24-48", label: "24-48 hours" },
         { value: ">48", label: "More than 48 hours" },
       ],
     });
@@ -59,7 +59,7 @@ export function getQuestions(session) {
       });
     }
   } else {
-    // Ring / patch / unknown method — minimal conservative branch for now.
+    // Ring / patch / unknown method - minimal conservative branch for now.
     q.push({
       id: "hoursLate",
       text: "How long has it been out of place / overdue?",
@@ -71,7 +71,7 @@ export function getQuestions(session) {
     });
   }
 
-  // Universal safety screen — feeds the safety filter.
+  // Universal safety screen - feeds the safety filter.
   q.push({
     id: "redFlags",
     text: "Do any of these apply right now?",
@@ -99,7 +99,7 @@ export function runEngine(session) {
     _stub: true, // <-- views show a "not clinically reviewed" badge
     product: product?.name || "Your method",
     disclaimer:
-      "This is general information based on common contraceptive guidance — not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
+      "This is general information based on common contraceptive guidance - not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
     escalate: false,
   };
 
@@ -148,25 +148,25 @@ export function runEngine(session) {
         headline: "Take action now and use backup",
         statusLabel: "Use backup",
         steps: [
-          { primary: true, text: "Take the most recent missed pill as soon as you remember — even if that means two pills in one day." },
+          { primary: true, text: "Take the most recent missed pill as soon as you remember - even if that means two pills in one day." },
           { text: "Keep taking one pill a day at your usual time." },
           { text: "Use condoms (backup) for the next 7 days." },
           week3
             ? { text: "Because you're near the end of the pack, skip the pill-free break and start the next pack straight away." }
             : { text: "Continue your pack as normal." },
           a.redFlags === "ubp"
-            ? { text: "You had unprotected sex recently — ask a pharmacist about emergency contraception." }
+            ? { text: "You had unprotected sex recently - ask a pharmacist about emergency contraception." }
             : null,
         ].filter(Boolean),
         backup: { needed: true, days: 7, method: "condoms" },
       };
     }
 
-    // One pill, <48h late — typically lower risk for combined pills.
+    // One pill, <48h late - typically lower risk for combined pills.
     return {
       ...base,
       status: "ok",
-      headline: "You're likely still protected — take it now",
+      headline: "You're likely still protected - take it now",
       statusLabel: "Likely protected",
       steps: [
         { primary: true, text: "Take the missed pill as soon as you remember, even if it means two in one day." },
@@ -180,7 +180,7 @@ export function runEngine(session) {
     };
   }
 
-  // 3) Ring / patch — conservative default for now.
+  // 3) Ring / patch - conservative default for now.
   return {
     ...base,
     status: "warn",

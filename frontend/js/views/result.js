@@ -1,4 +1,4 @@
-/* View: Result / Guidance — ordered, step-by-step answer. */
+/* View: Result / Guidance - ordered, step-by-step answer. */
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
@@ -34,11 +34,11 @@ function buildTimeline(result) {
     const backupEnd = addDays(today, days);
     const protectedDate = addDays(today, days + 1);
     rows.push({ day: "Tomorrow", date: fmtDate(tomorrow), action: "Take your next pill at the usual time" });
-    rows.push({ day: `${days} days`, date: `${fmtDate(tomorrow)}–${fmtDate(backupEnd)}`, action: `Use backup protection (${result.backup.method})` });
+    rows.push({ day: `${days} days`, date: `${fmtDate(tomorrow)}-${fmtDate(backupEnd)}`, action: `Use backup protection (${result.backup.method})` });
     rows.push({ day: fmtDay(protectedDate), date: fmtDate(protectedDate), action: "You're protected again", ok: true });
   } else {
     rows.push({ day: "Tomorrow", date: fmtDate(tomorrow), action: "Continue your pack as normal" });
-    rows.push({ day: "Status", date: "", action: "No backup needed — you're protected", ok: true });
+    rows.push({ day: "Status", date: "", action: "No backup needed - you're protected", ok: true });
   }
   return rows;
 }
@@ -121,7 +121,7 @@ export const ResultView = {
         body.innerHTML = `
           ${
             result._stub
-              ? `<span class="stub-badge" title="Placeholder logic"><span class="material-symbols-outlined" aria-hidden="true">science</span> Demo guidance — not clinically reviewed</span>`
+              ? `<span class="stub-badge" title="Placeholder logic"><span class="material-symbols-outlined" aria-hidden="true">science</span> Demo guidance - not clinically reviewed</span>`
               : ""
           }
 
