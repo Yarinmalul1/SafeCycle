@@ -5,6 +5,7 @@
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { getQuestions } from "../data/questions.js";
+import { showFieldError, clearFieldError } from "../util.js";
 
 export const QuestionsView = {
   render(params) {
@@ -39,9 +40,11 @@ export const QuestionsView = {
         </div>
 
         <div class="stack" style="gap:var(--space-2);margin-top:var(--space-3)">
-          <h1 class="subtitle">${q.text}</h1>
+          <h1 class="subtitle">${q.text}<span class="required" aria-hidden="true">*</span></h1>
           ${q.help ? `<p class="muted">${q.help}</p>` : ""}
         </div>
+
+        <p id="q-error" class="field-error" role="alert" hidden></p>
 
         <div class="stack" id="answers" style="margin-top:var(--space-2)">
           ${q.options
@@ -56,19 +59,41 @@ export const QuestionsView = {
             )
             .join("")}
         </div>
+
+        <div class="spacer"></div>
+        <div class="action-bar">
+          <button id="q-continue" class="btn btn--primary btn--block btn--lg">
+            ${idx + 1 < total ? "Continue" : "See my guidance"}
+          </button>
+        </div>
       `,
       onMount(el) {
+        const answersEl = el.querySelector("#answers");
+        const errorEl = el.querySelector("#q-error");
+
+        // Tapping an option selects it (does not auto-advance).
         el.querySelectorAll("[data-value]").forEach((btn) =>
           btn.addEventListener("click", () => {
             state.setAnswer(q.id, btn.dataset.value);
-
-            if (idx + 1 < total) {
-              router.go(`/questions?q=${idx + 1}`);
-            } else {
-              router.go("/result");
-            }
+            answersEl
+              .querySelectorAll("[data-value]")
+              .forEach((x) => x.setAttribute("aria-pressed", "false"));
+            btn.setAttribute("aria-pressed", "true");
+            clearFieldError(answersEl, errorEl);
           })
         );
+
+        el.querySelector("#q-continue").addEventListener("click", () => {
+          if (!state.session.answers[q.id]) {
+            showFieldError(answersEl, errorEl, "Please pick an option to continue.");
+            return;
+          }
+          if (idx + 1 < total) {
+            router.go(`/questions?q=${idx + 1}`);
+          } else {
+            router.go("/result");
+          }
+        });
       },
     };
   },
