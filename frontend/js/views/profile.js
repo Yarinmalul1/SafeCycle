@@ -72,7 +72,7 @@ export const ProfileView = {
       async onMount(el) {
         el.querySelector("#profile-signout").addEventListener("click", () => {
           state.setUser(null);
-          router.go("/profile");
+          router.go("/"); // back to the sign-in / welcome screen
         });
 
         const histEl = el.querySelector("#profile-history");

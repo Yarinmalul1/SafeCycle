@@ -61,9 +61,15 @@ export const api = {
     return { ok: true, _stub: true };
   },
 
-  /** STUB — Google OAuth via Supabase. */
+  /** STUB — Google OAuth via Supabase.
+   * Real version: Supabase Google OAuth → returns the authed profile.
+   * For the demo we return a mock signed-in user so the gated flow works. */
   async signInWithGoogle() {
     await delay(FAKE_LATENCY);
-    return { ok: false, _stub: true, reason: "Auth is wired in a later step." };
+    return {
+      ok: true,
+      _stub: true,
+      user: { name: "Sarah Levi", email: "sarah@example.com" },
+    };
   },
 };

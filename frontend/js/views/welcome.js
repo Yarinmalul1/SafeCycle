@@ -1,5 +1,5 @@
 /* View: Welcome / Landing (the first screen, per Stitch "Welcome").
-   Brand hero + "Start privately" → entry, "Learn how it works" → info. */
+   Brand hero + required Google sign-in → dashboard; "Learn how it works" → info. */
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
@@ -9,8 +9,8 @@ import { toast } from "../toast.js";
 const TRUST = [
   {
     icon: "security",
-    title: "No accounts",
-    desc: "We don't require names, emails, or phone numbers to help you.",
+    title: "Private account",
+    desc: "Your guidance is private to you and never sold or shared.",
   },
   {
     icon: "verified_user",
@@ -39,19 +39,15 @@ export const WelcomeView = {
           <p class="subtitle welcome__tagline">Where clarity meets privacy.</p>
           <p class="lead">
             Calm, step-by-step support for missed pills, late pills, timing
-            mistakes, or switching methods — without judgment, pressure, or
-            sign-up.
+            mistakes, or switching methods — without judgment or pressure.
           </p>
 
           <div class="stack" style="margin-top:var(--space-2)">
-            <button id="welcome-start" class="btn btn--primary btn--block btn--lg">
-              Start privately
-            </button>
+            ${googleButton("welcome-google", "Sign in with Google to continue")}
             <button id="welcome-learn" class="btn btn--secondary btn--block">
               Learn how SafeCycle works
             </button>
-            ${googleButton("welcome-google")}
-            <p class="subtle">Optional — sign in to save your answers.</p>
+            <p class="subtle">Sign in keeps your answers private and saved to your account.</p>
           </div>
 
           <div class="bento">
@@ -70,16 +66,22 @@ export const WelcomeView = {
         </div>
       `,
       onMount(el) {
-        el.querySelector("#welcome-start").addEventListener("click", () => {
-          state.reset();
-          router.go("/dashboard");
-        });
         el.querySelector("#welcome-learn").addEventListener("click", () =>
           router.go("/info")
         );
-        el.querySelector("#welcome-google").addEventListener("click", async () => {
+
+        const googleBtn = el.querySelector("#welcome-google");
+        googleBtn.addEventListener("click", async () => {
+          googleBtn.disabled = true;
           const res = await api.signInWithGoogle();
-          if (!res.ok) toast(res.reason || "Sign-in is coming soon.");
+          if (res.ok && res.user) {
+            state.setUser(res.user);
+            state.reset();
+            router.go("/dashboard");
+          } else {
+            googleBtn.disabled = false;
+            toast(res.reason || "Sign-in is coming soon.");
+          }
         });
       },
     };

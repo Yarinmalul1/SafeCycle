@@ -2,8 +2,13 @@
    No page reloads. Each route maps to a view module that exports
    `render(params)` -> { html, title, showBack, onMount? }. */
 
+import { state } from "./state.js";
+
 const routes = new Map();
 let notFound = null;
+
+// Pages reachable without signing in. Everything else requires a user.
+const PUBLIC_ROUTES = new Set(["/", "/info"]);
 
 const headerEl = () => document.getElementById("app-header");
 const titleEl = () => document.getElementById("app-title");
@@ -52,6 +57,14 @@ export const router = {
 
   async render() {
     const { path, params } = this.parse();
+
+    // Auth gate: require sign-in for everything except public routes.
+    // Redirecting to "/" triggers hashchange, which re-renders the welcome.
+    if (!state.user && !PUBLIC_ROUTES.has(path)) {
+      location.hash = "/";
+      return;
+    }
+
     const view = routes.get(path) || notFound;
     if (!view) return;
 
