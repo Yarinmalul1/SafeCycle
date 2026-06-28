@@ -80,6 +80,11 @@
   animation: viewIn var(--dur-base) var(--ease);
 }
 
+/* No bottom nav (welcome page): don't reserve space for it */
+.app-shell.no-nav .view {
+  padding-bottom: var(--space-6);
+}
+
 @keyframes viewIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }

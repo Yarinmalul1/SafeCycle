@@ -71,6 +71,7 @@ export const router = {
 
     // Bottom nav shows on every page except the welcome/landing page.
     document.getElementById("bottom-nav").hidden = isHome;
+    document.getElementById("app").classList.toggle("no-nav", isHome);
 
     // Highlight the active bottom-nav item.
     const navKey =

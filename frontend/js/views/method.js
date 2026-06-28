@@ -98,7 +98,9 @@ export const MethodView = {
 
             picker.hidden = method !== "pill";
             if (method === "pill") renderPills();
+            // Clear any error state on either container.
             clearFieldError(methodsEl, errorEl);
+            clearFieldError(results, errorEl);
           })
         );
 
