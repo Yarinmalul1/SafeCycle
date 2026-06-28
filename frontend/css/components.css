@@ -275,6 +275,51 @@
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
+/* ---- Form validation ---- */
+.required {
+  color: var(--color-error);
+  margin-left: 2px;
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-error);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.field-error::before {
+  content: "error";
+  font-family: "Material Symbols Outlined";
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.is-invalid {
+  border-radius: var(--radius-md);
+  outline: 2px solid var(--color-error);
+  outline-offset: 2px;
+}
+
+.input.is-invalid,
+.textarea.is-invalid {
+  border-color: var(--color-error);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 200ms var(--ease);
+}
+
 /* ---- Trust line / disclaimer ---- */
 .trust-line {
   display: flex;
