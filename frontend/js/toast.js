@@ -1,4 +1,4 @@
-/* SafeCycle — lightweight toast notification.
+/* SafeCycle - lightweight toast notification.
    A calm, non-blocking replacement for alert(). Renders into
    #overlay-root, floats above the bottom nav, and auto-dismisses. */
 

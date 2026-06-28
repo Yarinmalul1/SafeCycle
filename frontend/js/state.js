@@ -1,4 +1,4 @@
-/* SafeCycle — session state store
+/* SafeCycle - session state store
    Holds the in-progress guidance session (method, product, answers).
    Persists the current draft to sessionStorage so a refresh mid-flow
    doesn't lose the user's place. No PII, no network here. */
@@ -19,7 +19,7 @@ function emptySession() {
 
 const store = {
   session: load() || emptySession(),
-  // Stub auth state — wired to Supabase Google OAuth in a later step.
+  // Stub auth state - wired to Supabase Google OAuth in a later step.
   user: null,
   listeners: new Set(),
 };
@@ -37,7 +37,7 @@ function persist() {
   try {
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(store.session));
   } catch {
-    /* storage may be unavailable (private mode) — fine, keep in memory */
+    /* storage may be unavailable (private mode) - fine, keep in memory */
   }
 }
 

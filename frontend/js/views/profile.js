@@ -1,4 +1,4 @@
-/* View: Profile — sign-in (Google), account actions, and saved-answer
+/* View: Profile - sign-in (Google), account actions, and saved-answer
    History embedded inline. Auth + history are stubbed until Supabase
    Google OAuth is wired in a later step. */
 import { state } from "../state.js";
@@ -27,7 +27,7 @@ export const ProfileView = {
             <div>
               <strong>Save your guidance privately</strong>
               <p class="muted" style="margin-top:var(--space-1)">
-                Sign in and your saved answers will appear here. Private to you —
+                Sign in and your saved answers will appear here. Private to you -
                 no data selling, ever.
               </p>
             </div>

@@ -39,7 +39,7 @@ export const WelcomeView = {
           <p class="subtitle welcome__tagline">Where clarity meets privacy.</p>
           <p class="lead">
             Calm, step-by-step support for missed pills, late pills, timing
-            mistakes, or switching methods — without judgment or pressure.
+            mistakes, or switching methods - without judgment or pressure.
           </p>
 
           <div class="stack" style="margin-top:var(--space-2)">

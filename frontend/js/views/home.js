@@ -3,6 +3,7 @@ import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
+import { showFieldError, clearFieldError } from "../util.js";
 
 // `icon` values are Material Symbols Outlined ligature names (Stitch set).
 const SITUATIONS = [
@@ -20,13 +21,14 @@ export const HomeView = {
         <div class="stack" style="gap:var(--space-2)">
           <h1 class="title">What happened?</h1>
           <p class="lead">Tell us in your own words, and we'll walk you
-            through what to do — one step at a time.</p>
+            through what to do - one step at a time.</p>
         </div>
 
         <div class="field" style="margin-top:var(--space-2)">
           <label class="sr-only" for="home-input">Tell us what happened</label>
           <textarea id="home-input" class="textarea"
             placeholder="e.g. I forgot my pill yesterday and took two today…"></textarea>
+          <p id="home-error" class="field-error" role="alert" hidden></p>
           <button id="home-continue" class="btn btn--primary btn--block btn--lg">
             Continue
           </button>
@@ -67,16 +69,23 @@ export const HomeView = {
       `,
       onMount(el) {
         const input = el.querySelector("#home-input");
+        const errorEl = el.querySelector("#home-error");
         input.value = state.session.rawInput || "";
 
+        input.addEventListener("input", () => clearFieldError(input, errorEl));
+
         const proceed = async () => {
-          state.reset();
-          state.update({ rawInput: input.value.trim() });
-          // STUB parse — may pre-fill method to skip a step later.
-          if (input.value.trim()) {
-            const parsed = await api.parseInput(input.value);
-            if (parsed.method) state.update({ method: parsed.method });
+          const text = input.value.trim();
+          if (!text) {
+            showFieldError(input, errorEl, "Please describe what happened, or pick an option below.");
+            input.focus();
+            return;
           }
+          state.reset();
+          state.update({ rawInput: text });
+          // STUB parse - may pre-fill method to skip a step later.
+          const parsed = await api.parseInput(text);
+          if (parsed.method) state.update({ method: parsed.method });
           router.go("/method");
         };
 

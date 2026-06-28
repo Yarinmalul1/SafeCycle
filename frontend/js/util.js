@@ -1,4 +1,4 @@
-/* SafeCycle — tiny shared utilities. */
+/* SafeCycle - tiny shared utilities. */
 
 /** Official multi-color Google "G" mark. */
 const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">

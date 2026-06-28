@@ -12,7 +12,7 @@ export const MethodView = {
       html: `
         <div class="stack" style="gap:var(--space-2)">
           <h1 class="title">Which are you using?<span class="required" aria-hidden="true">*</span></h1>
-          <p class="muted">Each method — and each pill — has its own rules.</p>
+          <p class="muted">Each method - and each pill - has its own rules.</p>
         </div>
 
         <p id="method-error" class="field-error" role="alert" hidden></p>
