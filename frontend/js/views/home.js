@@ -3,8 +3,6 @@ import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
-import { googleButton } from "../util.js";
-import { toast } from "../toast.js";
 
 // `icon` values are Material Symbols Outlined ligature names (Stitch set).
 const SITUATIONS = [
@@ -52,14 +50,13 @@ export const HomeView = {
         <div class="spacer"></div>
 
         <div class="stack" style="gap:var(--space-3)">
-          ${googleButton("home-google", "Sign in with Google")}
           <button id="home-clinician" class="btn btn--ghost btn--block">
             Talk to a clinician
           </button>
           <p class="trust-line">
             <span class="material-symbols-outlined" aria-hidden="true">lock</span>
             <span>Real guidance based on medical guidelines. Not a diagnosis.
-            No sign-up required.</span>
+            Private to your account.</span>
           </p>
           <p class="subtle" style="text-align:center">
             <a href="#/profile">Saved answers</a>
@@ -92,11 +89,6 @@ export const HomeView = {
             router.go("/method");
           })
         );
-
-        el.querySelector("#home-google").addEventListener("click", async () => {
-          const res = await api.signInWithGoogle();
-          if (!res.ok) toast(res.reason || "Sign-in is coming soon.");
-        });
 
         el.querySelector("#home-clinician").addEventListener("click", () =>
           openEscalation()
