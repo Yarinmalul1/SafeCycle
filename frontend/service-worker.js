@@ -1,60 +1,28 @@
-/* SafeCycle — basic offline app shell.
-   Cache-first for the static shell so the app opens instantly and
-   works offline at a basic level. API calls are never cached. */
+/* SafeCycle — SELF-DESTROYING service worker (dev kill switch).
+   The previous versions cached the app shell, which kept serving stale
+   files during development. This worker takes over, deletes all caches,
+   unregisters itself, and reloads any open tab from the network.
+   Result: after one visit, no service worker remains and content is fresh.
+   (Re-introduce a caching worker for production PWA/offline later.) */
 
-const CACHE = "safecycle-shell-v12";
-
-const SHELL = [
-  "./",
-  "./index.html",
-  "./css/tokens.css",
-  "./css/base.css",
-  "./css/components.css",
-  "./js/app.js",
-  "./js/router.js",
-  "./js/state.js",
-  "./js/api.js",
-  "./js/data/products.js",
-  "./js/data/questions.js",
-  "./manifest.webmanifest",
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => {})
-  );
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
+    (async () => {
+      // Wipe every cache this origin holds.
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      // Remove this worker.
+      await self.registration.unregister();
+      // Reload controlled tabs so they fetch fresh from the network.
+      const clients = await self.clients.matchAll({ type: "window" });
+      clients.forEach((client) => client.navigate(client.url));
+    })()
   );
-  self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-
-  // Never cache API traffic (privacy + freshness).
-  if (request.url.includes("/api/")) {
-    return; // fall through to network
-  }
-
-  // Cache-first for same-origin GETs.
-  if (request.method === "GET" && new URL(request.url).origin === self.location.origin) {
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((resp) => {
-            const copy = resp.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
-            return resp;
-          }).catch(() => cached)
-      )
-    );
-  }
-});
+// Pass everything straight to the network (no caching).
+self.addEventListener("fetch", () => {});
