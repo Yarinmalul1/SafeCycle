@@ -71,7 +71,7 @@ export const WelcomeView = {
       onMount(el) {
         el.querySelector("#welcome-start").addEventListener("click", () => {
           state.reset();
-          router.go("/entry");
+          router.go("/dashboard");
         });
         el.querySelector("#welcome-learn").addEventListener("click", () =>
           router.go("/info")

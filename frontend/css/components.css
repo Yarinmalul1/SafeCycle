@@ -31,9 +31,19 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.app-header__logo {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+}
+
 .app-header__title {
   font-size: var(--fs-lg);
   font-weight: var(--fw-semibold);
+  font-family: var(--font-display);
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
 }
 
 .app-header__spacer {
@@ -637,6 +647,72 @@
 .bento__desc {
   font-size: var(--fs-sm);
   color: var(--color-text-muted);
+}
+
+/* ---- Dashboard ---- */
+.welcome-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+/* One column on the narrowest phones */
+@media (max-width: 359px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.dash-card__icon {
+  color: var(--color-primary);
+  font-size: 1.75rem;
+}
+
+.dash-card__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  margin-top: var(--space-1);
+}
+
+.dash-card__content {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.dash-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: var(--space-2);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary-strong);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+}
+
+.dash-card__link .material-symbols-outlined {
+  font-size: 1.125rem;
 }
 
 /* ---- Stub badge: marks placeholder medical/data content ---- */
