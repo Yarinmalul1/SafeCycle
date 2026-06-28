@@ -2,7 +2,7 @@
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { METHODS, PILLS, searchPills } from "../data/products.js";
-import { escapeHtml } from "../util.js";
+import { escapeHtml, showFieldError, clearFieldError } from "../util.js";
 
 export const MethodView = {
   render() {
@@ -11,9 +11,11 @@ export const MethodView = {
       title: "Your method",
       html: `
         <div class="stack" style="gap:var(--space-2)">
-          <h1 class="title">Which are you using?</h1>
+          <h1 class="title">Which are you using?<span class="required" aria-hidden="true">*</span></h1>
           <p class="muted">Each method — and each pill — has its own rules.</p>
         </div>
+
+        <p id="method-error" class="field-error" role="alert" hidden></p>
 
         <div class="stack" id="methods">
           ${METHODS.map(
@@ -43,7 +45,7 @@ export const MethodView = {
 
         <div class="spacer"></div>
         <div class="action-bar">
-          <button id="method-next" class="btn btn--primary btn--block btn--lg" disabled>
+          <button id="method-next" class="btn btn--primary btn--block btn--lg">
             Continue
           </button>
         </div>
@@ -52,14 +54,8 @@ export const MethodView = {
         const picker = el.querySelector("#pill-picker");
         const nextBtn = el.querySelector("#method-next");
         const results = el.querySelector("#pill-results");
-
-        const refreshNext = () => {
-          const s = state.session;
-          const ready =
-            (s.method && s.method !== "pill") ||
-            (s.method === "pill" && s.product);
-          nextBtn.disabled = !ready;
-        };
+        const methodsEl = el.querySelector("#methods");
+        const errorEl = el.querySelector("#method-error");
 
         const renderPills = (q = "") => {
           const list = searchPills(q);
@@ -86,7 +82,7 @@ export const MethodView = {
                 .querySelectorAll("[data-pill]")
                 .forEach((x) => x.setAttribute("aria-pressed", "false"));
               b.setAttribute("aria-pressed", "true");
-              refreshNext();
+              clearFieldError(results, errorEl);
             })
           );
         };
@@ -102,7 +98,7 @@ export const MethodView = {
 
             picker.hidden = method !== "pill";
             if (method === "pill") renderPills();
-            refreshNext();
+            clearFieldError(methodsEl, errorEl);
           })
         );
 
@@ -112,9 +108,19 @@ export const MethodView = {
         }
 
         if (chosen === "pill") renderPills();
-        refreshNext();
 
         nextBtn.addEventListener("click", () => {
+          const s = state.session;
+          if (!s.method) {
+            showFieldError(methodsEl, errorEl, "Please select your contraceptive method.");
+            return;
+          }
+          if (s.method === "pill" && !s.product) {
+            picker.hidden = false;
+            showFieldError(results, errorEl, "Please select your pill (or “I don't know my pill”).");
+            return;
+          }
+          clearFieldError(methodsEl, errorEl);
           state.update({ questionIndex: 0 });
           router.go("/questions");
         });
