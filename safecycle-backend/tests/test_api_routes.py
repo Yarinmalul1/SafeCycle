@@ -278,3 +278,38 @@ def test_history_is_scoped_per_user():
     client.post("/api/guidance", json=_parsed(), params={"user_id": "carol"})
     response = client.get("/api/history", params={"user_id": "dave"})
     assert response.json() == []
+
+
+# --------------------------------------------------------------------------- #
+# /api/auth/google
+# --------------------------------------------------------------------------- #
+def _fake_id_token(claims: dict) -> str:
+    """Build an unsigned JWT-shaped token (header.payload.signature)."""
+    import base64
+    import json
+
+    def seg(obj: dict) -> str:
+        raw = json.dumps(obj).encode()
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+    return f"{seg({'alg': 'none'})}.{seg(claims)}.signature"
+
+
+def test_auth_google_returns_profile_and_stores_session():
+    from db import queries
+
+    token = _fake_id_token(
+        {"sub": "1234567890", "email": "sarah@example.com", "name": "Sarah Levi"}
+    )
+    response = client.post("/api/auth/google", json={"credential": token})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {"name": "Sarah Levi", "email": "sarah@example.com", "userId": "1234567890"}
+    # The session is stored in memory under the stable user id.
+    assert queries.get_user("1234567890") == body
+
+
+def test_auth_google_rejects_malformed_credential():
+    response = client.post("/api/auth/google", json={"credential": "not-a-jwt"})
+    assert response.status_code == 401

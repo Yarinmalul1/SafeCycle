@@ -13,6 +13,9 @@ stages in the SafeCycle agent pipeline.
 
 from __future__ import annotations
 
+import base64
+import binascii
+import json
 import os
 
 import anthropic
@@ -28,9 +31,12 @@ from ai import (
     question_generator,
     safety_filter,
 )
+from db import queries
 from logic import engine
 from models import (
     AskQuestionRequest,
+    AuthUser,
+    GoogleAuthRequest,
     GuidanceResponse,
     HistorySession,
     ParsedScenario,
@@ -205,6 +211,51 @@ def products() -> list[ProductInfo]:
 def history(user_id: str = DEMO_USER, limit: int = 5) -> list[HistorySession]:
     """Return a user's past guidance sessions, newest first."""
     return [HistorySession(**s) for s in history_manager.recent(user_id, limit)]
+
+
+# --------------------------------------------------------------------------- #
+# Auth role — Google sign-in endpoint
+# --------------------------------------------------------------------------- #
+def _decode_jwt_claims(token: str) -> dict:
+    """Decode (without verifying) the claims from a JWT's payload segment.
+
+    NOTE: this only base64url-decodes the middle segment — it does NOT verify
+    the signature, issuer, audience, or expiry. That is a deliberate shortcut
+    for local development; before production this must be replaced with proper
+    verification of the Google ID token (e.g. google-auth's verify_oauth2_token).
+    """
+    parts = token.split(".")
+    if len(parts) != 3:
+        raise HTTPException(status_code=401, detail="Invalid Google credential.")
+    payload = parts[1]
+    # JWT uses base64url without padding; restore it before decoding.
+    payload += "=" * (-len(payload) % 4)
+    try:
+        return json.loads(base64.urlsafe_b64decode(payload))
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid Google credential.") from exc
+
+
+@app.post("/api/auth/google", response_model=AuthUser)
+def auth_google(req: GoogleAuthRequest) -> AuthUser:
+    """Sign a user in from a Google ID token and store their session.
+
+    Decodes the token's claims for name/email, derives a stable user id, and
+    records the session in memory so the rest of the app can recognise the user.
+    """
+    claims = _decode_jwt_claims(req.credential)
+
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(status_code=401, detail="Google credential is missing an email.")
+
+    # `sub` is Google's stable per-user id; fall back to the email if absent.
+    user_id = claims.get("sub") or email
+    name = claims.get("name") or email.split("@")[0]
+
+    user = AuthUser(name=name, email=email, userId=user_id)
+    queries.save_user(user_id, user.model_dump())
+    return user
 
 
 if __name__ == "__main__":

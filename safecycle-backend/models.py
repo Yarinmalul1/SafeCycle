@@ -251,6 +251,31 @@ class ProductInfo(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Auth role — request/response
+# --------------------------------------------------------------------------- #
+class GoogleAuthRequest(BaseModel):
+    """A Google sign-in request carrying the client-issued ID token."""
+
+    credential: str = Field(
+        ...,
+        min_length=1,
+        description="Google ID token (a JWT) returned by Google Identity Services.",
+    )
+
+
+class AuthUser(BaseModel):
+    """The authenticated user profile returned to the frontend."""
+
+    name: str = Field(..., description="The user's display name.")
+    email: str = Field(..., description="The user's email address.")
+    userId: str = Field(
+        ...,
+        description="Stable per-user id (the Google 'sub' claim, or the email as "
+        "a fallback).",
+    )
+
+
+# --------------------------------------------------------------------------- #
 # History Manager role — response
 # --------------------------------------------------------------------------- #
 class HistorySession(BaseModel):
