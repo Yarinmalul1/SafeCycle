@@ -52,10 +52,12 @@ async function request(path, options) {
 // --------------------------------------------------------------------------- #
 // Google Identity Services (GIS) sign-in
 // --------------------------------------------------------------------------- #
-// TODO: replace with the real Google OAuth Client ID for this project.
+// Public Google OAuth Client ID for SafeCycle. Safe to commit (it is not a secret;
+// the matching client *secret* lives only in the backend's .env). Can be overridden
+// at runtime via window.SAFECYCLE_GOOGLE_CLIENT_ID (set before this module loads).
 const GOOGLE_CLIENT_ID =
   (typeof window !== "undefined" && window.SAFECYCLE_GOOGLE_CLIENT_ID) ||
-  "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+  "649046048632-7e134020mfee0pk0l53tfc5rf7tt55f6.apps.googleusercontent.com";
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 
 let gsiScriptPromise = null;
