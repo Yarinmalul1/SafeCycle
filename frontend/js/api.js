@@ -107,12 +107,19 @@ export const api = {
   },
 
   /**
-   * STUB - Session history (Supabase, logged-in only).
-   * Real version: GET /api/history (auth required).
+   * Session history (via the backend).
+   * GET /api/history -> HistorySession[] { id, createdAt, scenario, guidance, message }
+   * Mapped into the compact shape the Profile list renders.
    */
   async getHistory() {
-    await delay(FAKE_LATENCY);
-    return []; // empty until auth + DB are wired
+    const res = await fetch(`${API_BASE}/api/history`);
+    const sessions = await res.json();
+    return sessions.map((s) => ({
+      id: s.id,
+      headline: s.guidance?.summary || s.message,
+      date: new Date(s.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      product: s.scenario?.product || "Your method",
+    }));
   },
 
   /** STUB - Save a result (Supabase). */
