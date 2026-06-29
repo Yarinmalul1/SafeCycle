@@ -185,3 +185,23 @@ def test_ask_question_hours_late_satisfies_missed_step():
         json=_ask(product="yasmin", cycleWeek=2, hoursLate=30),
     )
     assert response.json()["question"] is None
+
+
+# --------------------------------------------------------------------------- #
+# /api/products
+# --------------------------------------------------------------------------- #
+def test_products_lists_catalog():
+    response = client.get("/api/products")
+    assert response.status_code == 200
+    products = response.json()
+    names = {p["name"] for p in products}
+    assert {"yasmin", "yaz", "cerazette"} <= names
+
+
+def test_products_mark_combined_as_supported():
+    response = client.get("/api/products")
+    by_name = {p["name"]: p for p in response.json()}
+    assert by_name["yasmin"]["type"] == "combined"
+    assert by_name["yasmin"]["supported"] is True
+    # Progestogen-only has no rule set yet.
+    assert by_name["cerazette"]["supported"] is False

@@ -228,3 +228,18 @@ class QuestionResult(BaseModel):
         ge=1,
         description="1-based position of this question in the intake flow.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# Product Catalog role — response
+# --------------------------------------------------------------------------- #
+class ProductInfo(BaseModel):
+    """A contraceptive product SafeCycle knows about."""
+
+    name: str = Field(..., description="Product name, lowercase (e.g. 'yasmin').")
+    type: PillType = Field(..., description="Pill family this product belongs to.")
+    supported: bool = Field(
+        ...,
+        description="Whether the logic engine has a rule set for this product's "
+        "family yet.",
+    )

@@ -19,6 +19,26 @@ CATALOG: dict[str, PillType] = {
     "cerazette": PillType.PROGESTOGEN_ONLY,
 }
 
+# Pill families the logic engine currently has a rule set for.
+SUPPORTED_TYPES: set[PillType] = {PillType.COMBINED}
+
+
+def is_supported(product: str) -> bool:
+    """Whether the engine has rules for this product's family."""
+    return pill_type(product) in SUPPORTED_TYPES
+
+
+def list_products() -> list[dict]:
+    """Return the catalog as a sorted list of product records.
+
+    Each record has the product `name`, its pill-family `type`, and whether it
+    is `supported` (i.e. the engine has rules for that family).
+    """
+    return [
+        {"name": name, "type": ptype, "supported": ptype in SUPPORTED_TYPES}
+        for name, ptype in sorted(CATALOG.items())
+    ]
+
 
 def normalize(product: str) -> str:
     """Normalize a product name for lookup (lowercase, trimmed)."""

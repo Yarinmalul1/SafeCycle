@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
-from ai import answer_phraser, question_generator, safety_filter
+from ai import answer_phraser, product_catalog, question_generator, safety_filter
 from logic import engine
 from models import (
     AskQuestionRequest,
@@ -28,6 +28,7 @@ from models import (
     ParsedScenario,
     ParseInputRequest,
     PillScenario,
+    ProductInfo,
     QuestionResult,
     SafetyFilterResult,
 )
@@ -161,6 +162,15 @@ def safety_filter_endpoint(parsed: ParsedScenario) -> SafetyFilterResult:
 def ask_question(req: AskQuestionRequest) -> QuestionResult:
     """Return the next clarifying question for an in-progress scenario."""
     return question_generator.generate(req)
+
+
+# --------------------------------------------------------------------------- #
+# Product Catalog role — endpoint
+# --------------------------------------------------------------------------- #
+@app.get("/api/products", response_model=list[ProductInfo])
+def products() -> list[ProductInfo]:
+    """List the contraceptive products SafeCycle knows about."""
+    return [ProductInfo(**p) for p in product_catalog.list_products()]
 
 
 if __name__ == "__main__":
