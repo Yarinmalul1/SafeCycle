@@ -23,6 +23,7 @@ SUPPORTED_METHODS: set[ContraceptiveMethod] = {
     ContraceptiveMethod.COMBINED_PILL,
     ContraceptiveMethod.PROGESTOGEN_ONLY_PILL,
     ContraceptiveMethod.EXTENDED_CYCLE_PILL,
+    ContraceptiveMethod.VAGINAL_RING,
 }
 
 # Human-readable method names for user-facing summaries.
@@ -37,6 +38,35 @@ METHOD_LABELS: dict[ContraceptiveMethod, str] = {
 
 def _label(method: ContraceptiveMethod) -> str:
     return METHOD_LABELS.get(method, method.value)
+
+
+# Transition-specific practical tips, keyed by (fromMethod, toMethod).
+_M = ContraceptiveMethod
+TRANSITION_NOTES: dict[tuple[ContraceptiveMethod, ContraceptiveMethod], str] = {
+    (_M.COMBINED_PILL, _M.VAGINAL_RING): (
+        "Insert the ring on the day you would have taken your next active pill."
+    ),
+    (_M.EXTENDED_CYCLE_PILL, _M.VAGINAL_RING): (
+        "Insert the ring on the day you would have taken your next active pill."
+    ),
+    (_M.PROGESTOGEN_ONLY_PILL, _M.VAGINAL_RING): (
+        "Insert the ring on the day after your last progestogen-only pill."
+    ),
+    (_M.VAGINAL_RING, _M.COMBINED_PILL): (
+        "Start the pill on the day you remove the ring."
+    ),
+    (_M.VAGINAL_RING, _M.EXTENDED_CYCLE_PILL): (
+        "Start the pill on the day you remove the ring."
+    ),
+    (_M.VAGINAL_RING, _M.PROGESTOGEN_ONLY_PILL): (
+        "Start the pill on the day you remove the ring."
+    ),
+}
+
+
+def _transition_notes(scenario: MethodSwitchScenario) -> list[str]:
+    note = TRANSITION_NOTES.get((scenario.fromMethod, scenario.toMethod))
+    return [note] if note else []
 
 
 def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
@@ -60,6 +90,8 @@ def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
 
     frm, to = _label(scenario.fromMethod), _label(scenario.toMethod)
 
+    notes = _transition_notes(scenario)
+
     # Seamless switch (no gap): protection carries over continuously.
     if scenario.gapDays == 0:
         return GuidanceResult(
@@ -71,6 +103,7 @@ def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
                 f"continuously protected. Start {to} right away — no backup "
                 "contraception is needed."
             ),
+            notes=notes,
         )
 
     # A gap is present. Detailed timing/overlap handling is added in later
@@ -84,4 +117,5 @@ def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
             f"There was a gap before starting {to}. Start {to} now and use "
             "backup contraception for the next 7 days to be safe."
         ),
+        notes=notes,
     )
