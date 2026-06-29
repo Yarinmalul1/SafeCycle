@@ -18,8 +18,16 @@ import os
 import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from pydantic import ValidationError
 
-from models import ParsedScenario, ParseInputRequest
+from ai import answer_phraser
+from logic import engine
+from models import (
+    GuidanceResponse,
+    ParsedScenario,
+    ParseInputRequest,
+    PillScenario,
+)
 
 load_dotenv()
 
@@ -88,6 +96,50 @@ def parse_input(req: ParseInputRequest) -> ParsedScenario:
         raise HTTPException(status_code=422, detail="Request was declined.")
 
     return response.parsed_output
+
+
+# --------------------------------------------------------------------------- #
+# Guidance role — endpoint
+# --------------------------------------------------------------------------- #
+def _to_pill_scenario(parsed: ParsedScenario) -> PillScenario:
+    """Narrow a parsed scenario into the engine's validated `PillScenario`.
+
+    The engine needs a product and a known pack week. When either is missing,
+    we return a 422 with a single, user-facing clarifying question rather than
+    guessing — gap-filling is the parser / question-generator's job upstream.
+    """
+    if not parsed.product:
+        raise HTTPException(
+            status_code=422,
+            detail="Which contraceptive product is this about?",
+        )
+    if parsed.cycleWeek is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Which week of your pill pack are you in (1-4)?",
+        )
+    try:
+        return PillScenario(
+            product=parsed.product,
+            cycleWeek=parsed.cycleWeek,
+            pillsMissed=parsed.pillsMissed or 0,
+            hoursLate=parsed.hoursLate,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors(include_url=False)) from exc
+
+
+@app.post("/api/guidance", response_model=GuidanceResponse)
+def guidance(parsed: ParsedScenario) -> GuidanceResponse:
+    """Run the logic engine over a parsed scenario and phrase the result.
+
+    Pipeline: ParsedScenario -> PillScenario -> deterministic engine decision
+    -> Answer Phraser -> user-facing message.
+    """
+    scenario = _to_pill_scenario(parsed)
+    result = engine.evaluate(scenario)
+    message = answer_phraser.phrase(result, client=client)
+    return GuidanceResponse(guidance=result, message=message)
 
 
 if __name__ == "__main__":

@@ -153,3 +153,19 @@ class GuidanceResult(BaseModel):
         default_factory=list,
         description="Additional caveats or follow-up notes.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# Guidance endpoint — response
+# --------------------------------------------------------------------------- #
+class GuidanceResponse(BaseModel):
+    """The API's guidance response: the engine's structured decision plus the
+    Answer Phraser's user-facing text."""
+
+    guidance: GuidanceResult = Field(
+        ..., description="The structured decision from the logic engine."
+    )
+    message: str = Field(
+        ...,
+        description="Warm, plain-language phrasing of the guidance for the user.",
+    )
