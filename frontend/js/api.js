@@ -9,29 +9,34 @@
 
 import { runEngine } from "./data/questions.js";
 
+// Base URL of the FastAPI backend. Override at runtime by setting
+// window.SAFECYCLE_API_BASE before this module loads (e.g. in index.html).
+const API_BASE = (typeof window !== "undefined" && window.SAFECYCLE_API_BASE) || "http://localhost:8000";
+
 const FAKE_LATENCY = 450; // ms - mimic a network round-trip for realistic UI
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export const api = {
   /**
-   * STUB - Input parser (Claude).
-   * Real version: POST /api/parse { text } -> { method, hoursLate, ... }
-   * For now we do naive keyword sniffing just so the UI can pre-fill.
+   * Input parser (Claude, via the backend).
+   * POST /api/parse-input { userInput } -> ParsedScenario
+   *   { product, hoursLate, pillsMissed, cycleWeek, unprotectedSex,
+   *     confidence, clarifyingQuestion }
+   * The Home view only needs a `method` hint to pre-fill the next step; every
+   * product the backend knows about today is a pill, so a detected product
+   * implies the pill flow. (Full response mapping lives in the adapters below.)
    */
   async parseInput(text) {
-    await delay(FAKE_LATENCY);
-    const t = (text || "").toLowerCase();
-    let method = null;
-    if (/\bpill|pack|tablet\b/.test(t)) method = "pill";
-    else if (/\bring|nuvaring\b/.test(t)) method = "ring";
-    else if (/\bpatch\b/.test(t)) method = "patch";
+    const res = await fetch(`${API_BASE}/api/parse-input`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userInput: text }),
+    });
+    const parsed = await res.json();
     return {
-      method,
-      missedCount: /\btwo|2\b/.test(t) ? 2 : /\bone|1|a pill\b/.test(t) ? 1 : null,
-      // confidence + clarifying question would come from Claude
-      clarifyingQuestion: null,
-      _stub: true,
+      ...parsed,
+      method: parsed.product ? "pill" : null,
     };
   },
 
