@@ -90,6 +90,26 @@ def test_guidance_no_pills_missed_is_no_risk():
     assert response.json()["guidance"]["riskLevel"] == "none"
 
 
+def test_guidance_unprotected_sex_week1_is_high_risk():
+    # Two missed in week 1 + unprotected sex -> high risk, emergency contraception.
+    response = client.post(
+        "/api/guidance",
+        json=_parsed(pillsMissed=2, cycleWeek=1, unprotectedSex=True),
+    )
+    assert response.status_code == 200
+    guidance = response.json()["guidance"]
+    assert guidance["riskLevel"] == "high"
+    assert guidance["considerEmergencyContraception"] is True
+
+
+def test_guidance_without_unprotected_sex_is_not_high_risk():
+    # Same scenario but unprotectedSex not reported -> defaults to no, moderate.
+    response = client.post("/api/guidance", json=_parsed(pillsMissed=2, cycleWeek=1))
+    guidance = response.json()["guidance"]
+    assert guidance["riskLevel"] == "moderate"
+    assert guidance["considerEmergencyContraception"] is False
+
+
 def test_guidance_missing_product_returns_422():
     response = client.post("/api/guidance", json=_parsed(product=None))
     assert response.status_code == 422

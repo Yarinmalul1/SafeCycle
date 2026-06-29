@@ -81,6 +81,9 @@ PARSER_SYSTEM = (
     "invent timing, counts, or products. Leave unmentioned fields null.\n"
     "- 'hoursLate' is for a pill taken late; 'pillsMissed' is for pills fully "
     "skipped. These are different — do not conflate them.\n"
+    "- Set 'unprotectedSex' to true or false only if the user indicates whether "
+    "unprotected sex occurred during the at-risk window; leave it null if not "
+    "mentioned.\n"
     "- Set 'confidence' to reflect how certain you are about the extraction "
     "(1.0 = explicit and unambiguous, lower when you had to infer).\n"
     "- If essential information is missing or ambiguous (e.g. no product, or it "
@@ -138,6 +141,7 @@ def _to_pill_scenario(parsed: ParsedScenario) -> PillScenario:
             cycleWeek=parsed.cycleWeek,
             pillsMissed=parsed.pillsMissed or 0,
             hoursLate=parsed.hoursLate,
+            unprotectedSex=bool(parsed.unprotectedSex),
         )
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors(include_url=False)) from exc

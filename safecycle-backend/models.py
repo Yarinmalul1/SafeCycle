@@ -69,6 +69,11 @@ class ParsedScenario(BaseModel):
         description="Which week of the pill pack the user is in (1-4), if stated. "
         "Null if not mentioned.",
     )
+    unprotectedSex: Optional[bool] = Field(
+        None,
+        description="Whether unprotected sex occurred during the at-risk window, "
+        "if stated. Null if not mentioned.",
+    )
     confidence: float = Field(
         ...,
         description="Confidence (0.0-1.0) that the extracted fields correctly "
