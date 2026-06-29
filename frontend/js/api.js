@@ -41,14 +41,69 @@ export const api = {
   },
 
   /**
-   * STUB - Logic engine + answer phraser.
-   * Real version: POST /api/guidance { method, product, answers }
-   * -> deterministic engine result, phrased by Claude.
-   * Here we call a local conservative stub engine.
+   * Logic engine + answer phraser (via the backend).
+   * POST /api/guidance <ParsedScenario> -> GuidanceResponse { guidance, message }
+   *
+   * The backend speaks `ParsedScenario` in and `GuidanceResponse` out, while the
+   * Result view renders our own session/result shapes. We translate on the way
+   * in and out (these inline maps get pulled into named adapters in a later
+   * commit).
    */
   async getGuidance(session) {
-    await delay(FAKE_LATENCY);
-    return runEngine(session);
+    const a = session.answers || {};
+    const HOURS = { "<24": 12, "24-48": 36, ">48": 72, "<48": 24 };
+    const WEEK = { week1: 1, week2: 2, week3: 3 };
+    const MISSED = { "1": 1, "2+": 2, "0": 0 };
+
+    const parsed = {
+      product: session.product?.id || null,
+      hoursLate: a.hoursLate in HOURS ? HOURS[a.hoursLate] : null,
+      pillsMissed: a.missedCount in MISSED ? MISSED[a.missedCount] : null,
+      cycleWeek: a.packWeek in WEEK ? WEEK[a.packWeek] : null,
+      unprotectedSex: a.redFlags ? a.redFlags === "ubp" : null,
+      confidence: 1.0, // these are explicit user selections, not inferred
+      clarifyingQuestion: null,
+    };
+
+    const res = await fetch(`${API_BASE}/api/guidance`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed),
+    });
+    const resp = await res.json();
+
+    const g = resp.guidance;
+    const status =
+      g.riskLevel === "high" ? "danger" : g.riskLevel === "moderate" ? "warn" : "ok";
+
+    const steps = [];
+    if (g.takePillNow)
+      steps.push({
+        primary: true,
+        text: "Take the most recent missed or late pill as soon as you can - even if that means two pills in one day.",
+      });
+    if (g.skipPlaceboBreak)
+      steps.push({ text: "Skip the pill-free / placebo break and start your next pack straight away." });
+    if (g.useBackup)
+      steps.push({ text: `Use condoms (backup) for the next ${g.backupDays || 7} days.` });
+    if (g.considerEmergencyContraception)
+      steps.push({ text: "You may need emergency contraception - ask a pharmacist as soon as possible." });
+    for (const note of g.notes || []) steps.push({ text: note });
+    if (!steps.length) steps.push({ primary: true, text: resp.message || g.summary });
+
+    return {
+      status,
+      statusLabel:
+        status === "danger" ? "Seek medical help" : status === "warn" ? "Use backup" : "Likely protected",
+      headline: g.summary,
+      escalate: g.riskLevel === "high",
+      steps,
+      backup: { needed: g.useBackup, days: g.backupDays || 7, method: "condoms" },
+      message: resp.message,
+      disclaimer:
+        "This is general information based on common contraceptive guidance - not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
+      product: session.product?.name || "Your method",
+    };
   },
 
   /**
