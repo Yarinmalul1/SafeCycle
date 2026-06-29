@@ -14,10 +14,12 @@ stages in the SafeCycle agent pipeline.
 from __future__ import annotations
 
 import os
+from datetime import date, datetime, timedelta
 
 import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,11 +34,14 @@ from ai import (
     safety_filter,
 )
 from ai.product_catalog import pill_type
-from db import queries, sessions, users
+from db import calendars, queries, sessions, users
+from logic import calendar as calendar_generator
 from logic import engine, switching
 from models import (
     AskQuestionRequest,
     AuthUser,
+    CalendarGenerateRequest,
+    CalendarResponse,
     GoogleAuthRequest,
     GuidanceResponse,
     HistorySession,
@@ -331,6 +336,96 @@ def auth_google(req: GoogleAuthRequest) -> AuthUser:
         ) from exc
 
     return AuthUser(name=name, email=email, userId=row["id"])
+
+
+# --------------------------------------------------------------------------- #
+# Calendar role — endpoints (Phase 3)
+# --------------------------------------------------------------------------- #
+def _events_to_ics(events: list[dict], product: str) -> str:
+    """Render schedule events as an RFC-5545 .ics file.
+
+    Hand-rolled to avoid pulling in the `icalendar` library for ~10 lines of
+    work. Each event is a 15-minute reminder (DTSTART + 15min) so calendar
+    apps render it as a visible block rather than a 0-duration point.
+    """
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SafeCycle//EN", "CALSCALE:GREGORIAN"]
+    for i, e in enumerate(events):
+        # `starts_at` is an ISO-8601 string from CalendarEvent.as_dict().
+        dt = datetime.fromisoformat(e["starts_at"])
+        dt_start = dt.strftime("%Y%m%dT%H%M%SZ")
+        dt_end = (dt + timedelta(minutes=15)).strftime("%Y%m%dT%H%M%SZ")
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:safecycle-{product}-{i}-{dt_start}@safecycle.app",
+            f"DTSTAMP:{dt_start}",
+            f"DTSTART:{dt_start}",
+            f"DTEND:{dt_end}",
+            f"SUMMARY:{e['summary']}",
+            f"DESCRIPTION:{e['description']}",
+            "END:VEVENT",
+        ]
+    lines.append("END:VCALENDAR")
+    # ICS uses CRLF line endings.
+    return "\r\n".join(lines) + "\r\n"
+
+
+@app.post("/api/calendar/generate", response_model=CalendarResponse)
+def calendar_generate(req: CalendarGenerateRequest) -> CalendarResponse:
+    """Generate and persist a contraception schedule for the user.
+
+    Overwrites any existing schedule for the same user_id (one row per user;
+    see the calendars unique constraint). Returns the freshly-stored row.
+    """
+    try:
+        start = date.fromisoformat(req.start_date)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="start_date must be in YYYY-MM-DD format.",
+        ) from exc
+
+    events = calendar_generator.generate(req.product, start, hour=req.hour)
+    schedule_data = [e.as_dict() for e in events]
+
+    try:
+        row = calendars.upsert_for_user(
+            user_id=req.user_id,
+            product=req.product,
+            start_date=req.start_date,
+            hour=req.hour,
+            schedule_data=schedule_data,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=503,
+            detail="Could not save the schedule. Please try again.",
+        ) from exc
+
+    return CalendarResponse(**row)
+
+
+@app.get("/api/calendar/{user_id}", response_model=CalendarResponse)
+def calendar_get(user_id: str) -> CalendarResponse:
+    """Return the user's current schedule, or 404 if they have none."""
+    row = calendars.get_for_user(user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="No schedule for this user.")
+    return CalendarResponse(**row)
+
+
+@app.get("/api/calendar/{user_id}/ics")
+def calendar_ics(user_id: str) -> Response:
+    """Return the user's schedule as a downloadable .ics file."""
+    row = calendars.get_for_user(user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="No schedule for this user.")
+    ics = _events_to_ics(row["schedule_data"], row["product"])
+    filename = f"safecycle-{row['product']}.ics"
+    return Response(
+        content=ics,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 if __name__ == "__main__":

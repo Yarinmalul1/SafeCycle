@@ -178,6 +178,40 @@ def _stub_sessions(monkeypatch):
     yield store
 
 
+@pytest.fixture(autouse=True)
+def _stub_calendars(monkeypatch):
+    """Replace db.calendars with an in-memory dict-backed stub.
+
+    Mirrors the unique-per-user upsert semantics of the real Supabase table.
+    """
+    store: dict[str, dict] = {}  # user_id -> row
+    counter = {"n": 0}
+
+    def upsert_for_user(*, user_id, product, start_date, hour, schedule_data):
+        existing = store.get(user_id)
+        counter["n"] += 1
+        now = f"2026-06-29T21:00:{counter['n']:02d}Z"
+        row = {
+            "id": existing["id"] if existing else f"cal-{counter['n']}",
+            "user_id": user_id,
+            "product": product,
+            "start_date": start_date,
+            "hour": hour,
+            "schedule_data": schedule_data,
+            "created_at": existing["created_at"] if existing else now,
+            "updated_at": now,
+        }
+        store[user_id] = row
+        return row
+
+    def get_for_user(user_id):
+        return store.get(user_id)
+
+    monkeypatch.setattr("main.calendars.upsert_for_user", upsert_for_user)
+    monkeypatch.setattr("main.calendars.get_for_user", get_for_user)
+    yield store
+
+
 def test_guidance_two_missed_week1_is_moderate_and_phrased():
     response = client.post("/api/guidance", json=_parsed(pillsMissed=2, cycleWeek=1))
     assert response.status_code == 200
@@ -627,3 +661,85 @@ def test_auth_google_rejects_unverified_email():
     response = client.post("/api/auth/google", json={"credential": token})
     assert response.status_code == 401
     assert "verified" in response.json()["detail"].lower()
+
+
+# --------------------------------------------------------------------------- #
+# /api/calendar (Phase 3)
+# --------------------------------------------------------------------------- #
+def _gen(**overrides) -> dict:
+    body = {
+        "user_id": "user-1",
+        "product": "pill",
+        "start_date": "2026-07-01",
+        "hour": 9,
+    }
+    body.update(overrides)
+    return body
+
+
+def test_calendar_generate_creates_pill_schedule_for_90_days():
+    response = client.post("/api/calendar/generate", json=_gen())
+    assert response.status_code == 200
+    body = response.json()
+    assert body["product"] == "pill"
+    assert body["hour"] == 9
+    # 90 daily pill events.
+    assert len(body["schedule_data"]) == 90
+    # Each event has the expected shape.
+    e = body["schedule_data"][0]
+    assert "starts_at" in e and "summary" in e and "description" in e
+    assert "pill" in e["summary"].lower()
+
+
+def test_calendar_generate_for_ring_uses_ring_schedule():
+    response = client.post("/api/calendar/generate", json=_gen(product="ring"))
+    body = response.json()
+    # Ring has fewer events than pill (insert/remove pairs, not daily).
+    assert len(body["schedule_data"]) < 90
+    assert any("ring" in e["summary"].lower() for e in body["schedule_data"])
+
+
+def test_calendar_generate_rejects_bad_date_format():
+    response = client.post("/api/calendar/generate", json=_gen(start_date="07/01/2026"))
+    assert response.status_code == 422
+
+
+def test_calendar_get_returns_404_when_missing():
+    response = client.get("/api/calendar/nobody")
+    assert response.status_code == 404
+
+
+def test_calendar_get_returns_stored_schedule():
+    client.post("/api/calendar/generate", json=_gen(user_id="alice"))
+    response = client.get("/api/calendar/alice")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user_id"] == "alice"
+    assert body["product"] == "pill"
+
+
+def test_calendar_generate_twice_does_not_duplicate(_stub_calendars):
+    client.post("/api/calendar/generate", json=_gen(user_id="bob", product="pill"))
+    client.post("/api/calendar/generate", json=_gen(user_id="bob", product="ring"))
+    # Same user -> one row, product updated.
+    assert len(_stub_calendars) == 1
+    assert _stub_calendars["bob"]["product"] == "ring"
+
+
+def test_calendar_ics_returns_text_calendar_with_vevents():
+    client.post("/api/calendar/generate", json=_gen(user_id="carol", product="patch"))
+    response = client.get("/api/calendar/carol/ics")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/calendar")
+    assert 'attachment; filename="safecycle-patch.ics"' in response.headers["content-disposition"]
+    body = response.text
+    assert body.startswith("BEGIN:VCALENDAR")
+    assert body.rstrip().endswith("END:VCALENDAR")
+    # At least one VEVENT block.
+    assert "BEGIN:VEVENT" in body
+    assert "SUMMARY:Change patch" in body
+
+
+def test_calendar_ics_returns_404_when_missing():
+    response = client.get("/api/calendar/nobody/ics")
+    assert response.status_code == 404

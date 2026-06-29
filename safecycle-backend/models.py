@@ -338,3 +338,43 @@ class HistorySession(BaseModel):
     scenario: PillScenario = Field(..., description="The scenario evaluated.")
     guidance: GuidanceResult = Field(..., description="The engine's decision.")
     message: str = Field(..., description="The phrased message shown to the user.")
+
+
+# --------------------------------------------------------------------------- #
+# Calendar role — request/response models (Phase 3)
+# --------------------------------------------------------------------------- #
+class CalendarGenerateRequest(BaseModel):
+    """A request to generate (or regenerate) a user's contraception schedule."""
+
+    user_id: str = Field(..., description="Supabase user uuid that owns the schedule.")
+    product: str = Field(
+        ...,
+        description="Method family: 'pill', 'ring', or 'patch'. Unknown values "
+        "fall back to a daily pill schedule.",
+    )
+    start_date: str = Field(
+        ...,
+        description="The schedule's anchor date (YYYY-MM-DD).",
+    )
+    hour: int = Field(
+        9,
+        ge=0,
+        le=23,
+        description="Hour of day (0-23, UTC) for reminders. Defaults to 9.",
+    )
+
+
+class CalendarResponse(BaseModel):
+    """A user's current schedule, including the materialised events."""
+
+    id: str
+    user_id: str
+    product: str
+    start_date: str
+    hour: int
+    schedule_data: list[dict] = Field(
+        ...,
+        description="Materialised events: each {starts_at, summary, description}.",
+    )
+    created_at: str
+    updated_at: str
