@@ -228,13 +228,14 @@ def test_products_lists_catalog():
     assert {"yasmin", "yaz", "cerazette"} <= names
 
 
-def test_products_mark_combined_as_supported():
+def test_products_mark_supported_families():
     response = client.get("/api/products")
     by_name = {p["name"]: p for p in response.json()}
     assert by_name["yasmin"]["type"] == "combined"
     assert by_name["yasmin"]["supported"] is True
-    # Progestogen-only has no rule set yet.
-    assert by_name["cerazette"]["supported"] is False
+    # Progestogen-only pills now have a rule set too.
+    assert by_name["cerazette"]["type"] == "progestogen_only"
+    assert by_name["cerazette"]["supported"] is True
 
 
 # --------------------------------------------------------------------------- #

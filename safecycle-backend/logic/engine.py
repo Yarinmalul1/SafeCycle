@@ -22,13 +22,16 @@ for weeks 1-3 of the pack. The rules follow standard combined-pill guidance:
 
 from __future__ import annotations
 
-from ai.product_catalog import PillType, normalize, pill_type
+from ai.product_catalog import PillType, normalize, pill_type, pop_window_hours
 from models import GuidanceResult, PillScenario, RiskLevel
 
-# A pill is only considered "missed" once it is this many hours late.
+# A combined pill is only considered "missed" once it is this many hours late.
 MISSED_THRESHOLD_HOURS = 24
 # Standard backup duration after missed combined pills.
 BACKUP_DAYS = 7
+# Backup duration after a missed progestogen-only pill (shorter — POPs become
+# reliable again faster).
+POP_BACKUP_DAYS = 2
 
 
 def evaluate(scenario: PillScenario) -> GuidanceResult:
@@ -37,8 +40,11 @@ def evaluate(scenario: PillScenario) -> GuidanceResult:
     Dispatches by product family. Today only combined pills (e.g. Yasmin) have
     rules; anything else returns a conservative "talk to a professional" result.
     """
-    if pill_type(scenario.product) is PillType.COMBINED:
+    ptype = pill_type(scenario.product)
+    if ptype is PillType.COMBINED:
         return _evaluate_combined(scenario)
+    if ptype is PillType.PROGESTOGEN_ONLY:
+        return _evaluate_pop(scenario, pop_window_hours(scenario.product))
 
     return GuidanceResult(
         riskLevel=RiskLevel.MODERATE,
@@ -62,6 +68,52 @@ def _missed_count(scenario: PillScenario) -> int:
         if scenario.hoursLate >= MISSED_THRESHOLD_HOURS:
             missed = 1
     return missed
+
+
+def _evaluate_pop(scenario: PillScenario, window_hours: int) -> GuidanceResult:
+    """Missed/late-pill rules for progestogen-only pills (POPs).
+
+    POPs have no pack weeks and a much tighter timing window than combined
+    pills: a pill is "missed" once it is more than ``window_hours`` late (3h for
+    most POPs, 12h for desogestrel pills like Cerazette).
+    """
+    missed = scenario.pillsMissed
+    if missed == 0 and scenario.hoursLate is not None and scenario.hoursLate > window_hours:
+        missed = 1
+
+    if missed == 0:
+        if scenario.hoursLate is not None and scenario.hoursLate > 0:
+            return GuidanceResult(
+                riskLevel=RiskLevel.NONE,
+                takePillNow=True,
+                summary=(
+                    f"You're within the {window_hours}-hour window for this "
+                    "progestogen-only pill. Take it now and your next one at the "
+                    "usual time — you're still protected."
+                ),
+            )
+        return GuidanceResult(
+            riskLevel=RiskLevel.NONE,
+            takePillNow=False,
+            summary="No pills missed — you're protected. Carry on as usual.",
+        )
+
+    # The pill was taken too late (or skipped): protection may have dropped.
+    return GuidanceResult(
+        riskLevel=RiskLevel.HIGH if scenario.unprotectedSex else RiskLevel.MODERATE,
+        takePillNow=True,
+        useBackup=True,
+        backupDays=POP_BACKUP_DAYS,
+        considerEmergencyContraception=scenario.unprotectedSex,
+        summary=(
+            "This progestogen-only pill was more than "
+            f"{window_hours} hours late, so take the most recent pill now and "
+            f"use backup contraception for the next {POP_BACKUP_DAYS} days. "
+            "Consider emergency contraception if you had unprotected sex in the "
+            "last few days."
+        ),
+        notes=[f"Progestogen-only pills must be taken within {window_hours} hours."],
+    )
 
 
 def _evaluate_combined(scenario: PillScenario) -> GuidanceResult:

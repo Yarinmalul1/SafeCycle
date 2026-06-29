@@ -20,7 +20,20 @@ CATALOG: dict[str, PillType] = {
 }
 
 # Pill families the logic engine currently has a rule set for.
-SUPPORTED_TYPES: set[PillType] = {PillType.COMBINED}
+SUPPORTED_TYPES: set[PillType] = {PillType.COMBINED, PillType.PROGESTOGEN_ONLY}
+
+# Progestogen-only pills must be taken within a per-product window (in hours).
+# Desogestrel POPs (e.g. Cerazette) allow 12 hours; older norethisterone POPs
+# allow only 3. Unknown POPs default to the stricter 3-hour window.
+DEFAULT_POP_WINDOW_HOURS = 3
+POP_WINDOW_HOURS: dict[str, int] = {
+    "cerazette": 12,
+}
+
+
+def pop_window_hours(product: str) -> int:
+    """Return the late-dose window (hours) for a progestogen-only pill."""
+    return POP_WINDOW_HOURS.get(normalize(product), DEFAULT_POP_WINDOW_HOURS)
 
 
 def is_supported(product: str) -> bool:

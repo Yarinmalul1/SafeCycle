@@ -40,3 +40,31 @@ def test_yaz_two_missed_week1_recommends_backup():
 def test_yaz_two_missed_week3_skips_placebo_break():
     result = evaluate(_scenario("yaz", pillsMissed=2, cycleWeek=3))
     assert result.skipPlaceboBreak is True
+
+
+# --------------------------------------------------------------------------- #
+# Cerazette — progestogen-only pill (desogestrel, 12-hour window)
+# --------------------------------------------------------------------------- #
+def test_cerazette_is_pop_and_supported():
+    assert product_catalog.pill_type("cerazette") is PillType.PROGESTOGEN_ONLY
+    assert product_catalog.is_supported("cerazette") is True
+    assert product_catalog.pop_window_hours("cerazette") == 12
+
+
+def test_cerazette_within_12h_window_is_protected():
+    result = evaluate(_scenario("cerazette", pillsMissed=0, hoursLate=10))
+    assert result.riskLevel is RiskLevel.NONE
+    assert result.useBackup is False
+
+
+def test_cerazette_over_12h_is_missed_and_needs_backup():
+    result = evaluate(_scenario("cerazette", pillsMissed=0, hoursLate=14))
+    assert result.riskLevel is RiskLevel.MODERATE
+    assert result.useBackup is True
+    assert result.backupDays == 2
+
+
+def test_cerazette_missed_with_unprotected_sex_is_high_risk():
+    result = evaluate(_scenario("cerazette", pillsMissed=1, unprotectedSex=True))
+    assert result.riskLevel is RiskLevel.HIGH
+    assert result.considerEmergencyContraception is True
