@@ -17,13 +17,15 @@ from __future__ import annotations
 
 from models import ContraceptiveMethod, GuidanceResult, MethodSwitchScenario, RiskLevel
 
-# Methods the switching engine can currently reason about. Expanded as coverage
-# grows (the ring and patch are added in later commits).
+# Methods the switching engine can reason about. The conservative branch in
+# evaluate_switch guards against any future method added to the enum but not yet
+# given switching rules.
 SUPPORTED_METHODS: set[ContraceptiveMethod] = {
     ContraceptiveMethod.COMBINED_PILL,
     ContraceptiveMethod.PROGESTOGEN_ONLY_PILL,
     ContraceptiveMethod.EXTENDED_CYCLE_PILL,
     ContraceptiveMethod.VAGINAL_RING,
+    ContraceptiveMethod.PATCH,
 }
 
 # Human-readable method names for user-facing summaries.
@@ -60,6 +62,26 @@ TRANSITION_NOTES: dict[tuple[ContraceptiveMethod, ContraceptiveMethod], str] = {
     ),
     (_M.VAGINAL_RING, _M.PROGESTOGEN_ONLY_PILL): (
         "Start the pill on the day you remove the ring."
+    ),
+    # Ring <-> patch
+    (_M.VAGINAL_RING, _M.PATCH): "Apply the patch on the day you remove the ring.",
+    (_M.PATCH, _M.VAGINAL_RING): "Insert the ring on the day you remove the patch.",
+    # Pill <-> patch
+    (_M.COMBINED_PILL, _M.PATCH): (
+        "Apply the patch on the day you would have taken your next active pill."
+    ),
+    (_M.EXTENDED_CYCLE_PILL, _M.PATCH): (
+        "Apply the patch on the day you would have taken your next active pill."
+    ),
+    (_M.PROGESTOGEN_ONLY_PILL, _M.PATCH): (
+        "Apply the patch on the day after your last progestogen-only pill."
+    ),
+    (_M.PATCH, _M.COMBINED_PILL): "Start the pill on the day you remove the patch.",
+    (_M.PATCH, _M.EXTENDED_CYCLE_PILL): (
+        "Start the pill on the day you remove the patch."
+    ),
+    (_M.PATCH, _M.PROGESTOGEN_ONLY_PILL): (
+        "Start the pill on the day you remove the patch."
     ),
 }
 

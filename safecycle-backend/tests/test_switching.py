@@ -66,11 +66,28 @@ def test_pill_to_ring_with_gap_recommends_backup():
 
 
 # --------------------------------------------------------------------------- #
-# Methods not yet covered fall back to conservative guidance
+# Ring <-> patch (and pill <-> patch) switching
 # --------------------------------------------------------------------------- #
-def test_unsupported_method_is_conservative():
-    # The patch isn't covered until a later commit.
+def test_ring_to_patch_seamless_is_protected_with_tip():
+    result = evaluate_switch(_switch(M.VAGINAL_RING, M.PATCH))
+    assert result.riskLevel is RiskLevel.NONE
+    assert result.useBackup is False
+    assert any("patch" in n.lower() for n in result.notes)
+
+
+def test_patch_to_ring_seamless_is_protected_with_tip():
+    result = evaluate_switch(_switch(M.PATCH, M.VAGINAL_RING))
+    assert result.riskLevel is RiskLevel.NONE
+    assert any("remove the patch" in n.lower() for n in result.notes)
+
+
+def test_patch_to_combined_pill_seamless_is_protected():
     result = evaluate_switch(_switch(M.PATCH, M.COMBINED_PILL))
-    assert result.riskLevel is RiskLevel.MODERATE
+    assert result.riskLevel is RiskLevel.NONE
+    assert result.useBackup is False
+
+
+def test_ring_to_patch_with_gap_recommends_backup():
+    result = evaluate_switch(_switch(M.VAGINAL_RING, M.PATCH, gapDays=4))
     assert result.useBackup is True
-    assert "isn't available" in result.summary
+    assert result.riskLevel is RiskLevel.MODERATE
