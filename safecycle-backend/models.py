@@ -33,6 +33,20 @@ class PillType(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ContraceptiveMethod(str, Enum):
+    """A contraceptive method, used when reasoning about switching between them.
+
+    Broader than `PillType`: it spans pills, the vaginal ring, and the patch, so
+    the switching engine can describe a transition from any method to any other.
+    """
+
+    COMBINED_PILL = "combined_pill"
+    PROGESTOGEN_ONLY_PILL = "progestogen_only_pill"
+    EXTENDED_CYCLE_PILL = "extended_cycle_pill"
+    VAGINAL_RING = "vaginal_ring"
+    PATCH = "patch"
+
+
 # --------------------------------------------------------------------------- #
 # Input Parser role — request/response models
 # --------------------------------------------------------------------------- #
@@ -118,6 +132,34 @@ class PillScenario(BaseModel):
     unprotectedSex: bool = Field(
         False,
         description="Whether unprotected sex occurred during the at-risk window.",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Method-switching engine — input
+# --------------------------------------------------------------------------- #
+class MethodSwitchScenario(BaseModel):
+    """A request to switch from one contraceptive method to another.
+
+    The switching engine reasons over the two methods plus the timing of the
+    switch (any gap, and whether unprotected sex occurred during it).
+    """
+
+    fromMethod: ContraceptiveMethod = Field(
+        ..., description="The method the user is switching away from."
+    )
+    toMethod: ContraceptiveMethod = Field(
+        ..., description="The method the user is switching to."
+    )
+    gapDays: int = Field(
+        0,
+        ge=0,
+        description="Days between the last active dose of the old method and "
+        "starting the new one. 0 = switched immediately, with no gap.",
+    )
+    unprotectedSex: bool = Field(
+        False,
+        description="Whether unprotected sex occurred during the switch gap.",
     )
 
 
