@@ -110,15 +110,95 @@ async function getGoogleCredential() {
   });
 }
 
+// --------------------------------------------------------------------------- #
+// Shape adapters
+// --------------------------------------------------------------------------- #
+// The backend speaks ParsedScenario / GuidanceResponse / HistorySession, while
+// the views render our own session/result/history shapes. These translate
+// between the two in one place.
+
+/** Backend ParsedScenario -> the hint shape the Home view consumes. Every
+ *  product the backend knows about today is a pill, so a detected product
+ *  implies the pill flow. */
+function adaptParsedScenario(parsed) {
+  return {
+    ...parsed,
+    method: parsed.product ? "pill" : null,
+  };
+}
+
+/** In-progress session (method/product/answers) -> backend ParsedScenario. */
+function sessionToParsedScenario(session) {
+  const a = session.answers || {};
+  const HOURS = { "<24": 12, "24-48": 36, ">48": 72, "<48": 24 };
+  const WEEK = { week1: 1, week2: 2, week3: 3 };
+  const MISSED = { "1": 1, "2+": 2, "0": 0 };
+
+  return {
+    product: session.product?.id || null,
+    hoursLate: a.hoursLate in HOURS ? HOURS[a.hoursLate] : null,
+    pillsMissed: a.missedCount in MISSED ? MISSED[a.missedCount] : null,
+    cycleWeek: a.packWeek in WEEK ? WEEK[a.packWeek] : null,
+    unprotectedSex: a.redFlags ? a.redFlags === "ubp" : null,
+    confidence: 1.0, // these are explicit user selections, not inferred
+    clarifyingQuestion: null,
+  };
+}
+
+/** Backend GuidanceResponse -> the result shape the Result view renders. */
+function adaptGuidance(resp, session) {
+  const g = resp.guidance;
+  const status =
+    g.riskLevel === "high" ? "danger" : g.riskLevel === "moderate" ? "warn" : "ok";
+
+  const steps = [];
+  if (g.takePillNow)
+    steps.push({
+      primary: true,
+      text: "Take the most recent missed or late pill as soon as you can - even if that means two pills in one day.",
+    });
+  if (g.skipPlaceboBreak)
+    steps.push({ text: "Skip the pill-free / placebo break and start your next pack straight away." });
+  if (g.useBackup)
+    steps.push({ text: `Use condoms (backup) for the next ${g.backupDays || 7} days.` });
+  if (g.considerEmergencyContraception)
+    steps.push({ text: "You may need emergency contraception - ask a pharmacist as soon as possible." });
+  for (const note of g.notes || []) steps.push({ text: note });
+  if (!steps.length) steps.push({ primary: true, text: resp.message || g.summary });
+
+  return {
+    status,
+    statusLabel:
+      status === "danger" ? "Seek medical help" : status === "warn" ? "Use backup" : "Likely protected",
+    headline: g.summary,
+    escalate: g.riskLevel === "high",
+    steps,
+    backup: { needed: g.useBackup, days: g.backupDays || 7, method: "condoms" },
+    message: resp.message,
+    disclaimer:
+      "This is general information based on common contraceptive guidance - not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
+    product: session.product?.name || "Your method",
+  };
+}
+
+/** Backend HistorySession[] -> the compact list shape the Profile view renders. */
+function adaptHistory(sessions) {
+  return sessions.map((s) => ({
+    id: s.id,
+    headline: s.guidance?.summary || s.message,
+    date: new Date(s.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    product: s.scenario?.product || "Your method",
+  }));
+}
+
 export const api = {
   /**
    * Input parser (Claude, via the backend).
    * POST /api/parse-input { userInput } -> ParsedScenario
    *   { product, hoursLate, pillsMissed, cycleWeek, unprotectedSex,
    *     confidence, clarifyingQuestion }
-   * The Home view only needs a `method` hint to pre-fill the next step; every
-   * product the backend knows about today is a pill, so a detected product
-   * implies the pill flow. (Full response mapping lives in the adapters below.)
+   * The Home view only needs a `method` hint to pre-fill the next step (see
+   * adaptParsedScenario).
    */
   async parseInput(text) {
     const parsed = await request("/api/parse-input", {
@@ -126,90 +206,31 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userInput: text }),
     });
-    return {
-      ...parsed,
-      method: parsed.product ? "pill" : null,
-    };
+    return adaptParsedScenario(parsed);
   },
 
   /**
    * Logic engine + answer phraser (via the backend).
    * POST /api/guidance <ParsedScenario> -> GuidanceResponse { guidance, message }
-   *
-   * The backend speaks `ParsedScenario` in and `GuidanceResponse` out, while the
-   * Result view renders our own session/result shapes. We translate on the way
-   * in and out (these inline maps get pulled into named adapters in a later
-   * commit).
+   * Shapes are translated in and out by sessionToParsedScenario / adaptGuidance.
    */
   async getGuidance(session) {
-    const a = session.answers || {};
-    const HOURS = { "<24": 12, "24-48": 36, ">48": 72, "<48": 24 };
-    const WEEK = { week1: 1, week2: 2, week3: 3 };
-    const MISSED = { "1": 1, "2+": 2, "0": 0 };
-
-    const parsed = {
-      product: session.product?.id || null,
-      hoursLate: a.hoursLate in HOURS ? HOURS[a.hoursLate] : null,
-      pillsMissed: a.missedCount in MISSED ? MISSED[a.missedCount] : null,
-      cycleWeek: a.packWeek in WEEK ? WEEK[a.packWeek] : null,
-      unprotectedSex: a.redFlags ? a.redFlags === "ubp" : null,
-      confidence: 1.0, // these are explicit user selections, not inferred
-      clarifyingQuestion: null,
-    };
-
     const resp = await request("/api/guidance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed),
+      body: JSON.stringify(sessionToParsedScenario(session)),
     });
-
-    const g = resp.guidance;
-    const status =
-      g.riskLevel === "high" ? "danger" : g.riskLevel === "moderate" ? "warn" : "ok";
-
-    const steps = [];
-    if (g.takePillNow)
-      steps.push({
-        primary: true,
-        text: "Take the most recent missed or late pill as soon as you can - even if that means two pills in one day.",
-      });
-    if (g.skipPlaceboBreak)
-      steps.push({ text: "Skip the pill-free / placebo break and start your next pack straight away." });
-    if (g.useBackup)
-      steps.push({ text: `Use condoms (backup) for the next ${g.backupDays || 7} days.` });
-    if (g.considerEmergencyContraception)
-      steps.push({ text: "You may need emergency contraception - ask a pharmacist as soon as possible." });
-    for (const note of g.notes || []) steps.push({ text: note });
-    if (!steps.length) steps.push({ primary: true, text: resp.message || g.summary });
-
-    return {
-      status,
-      statusLabel:
-        status === "danger" ? "Seek medical help" : status === "warn" ? "Use backup" : "Likely protected",
-      headline: g.summary,
-      escalate: g.riskLevel === "high",
-      steps,
-      backup: { needed: g.useBackup, days: g.backupDays || 7, method: "condoms" },
-      message: resp.message,
-      disclaimer:
-        "This is general information based on common contraceptive guidance - not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
-      product: session.product?.name || "Your method",
-    };
+    return adaptGuidance(resp, session);
   },
 
   /**
    * Session history (via the backend).
-   * GET /api/history -> HistorySession[] { id, createdAt, scenario, guidance, message }
-   * Mapped into the compact shape the Profile list renders.
+   * GET /api/history -> HistorySession[]; mapped by adaptHistory into the
+   * compact shape the Profile list renders.
    */
   async getHistory() {
     const sessions = await request("/api/history");
-    return sessions.map((s) => ({
-      id: s.id,
-      headline: s.guidance?.summary || s.message,
-      date: new Date(s.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      product: s.scenario?.product || "Your method",
-    }));
+    return adaptHistory(sessions);
   },
 
   /** STUB - Save a result (Supabase). */
