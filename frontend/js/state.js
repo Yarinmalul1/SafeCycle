@@ -13,13 +13,13 @@ function emptySession() {
     product: null, // { id, name } once chosen
     answers: {}, // questionId -> answerValue
     questionIndex: 0,
-    result: null, // populated by the (stubbed) engine
+    result: null, // populated from the backend guidance engine
   };
 }
 
 const store = {
   session: load() || emptySession(),
-  // Stub auth state - wired to Supabase Google OAuth in a later step.
+  // Signed-in user, set after Google sign-in (see api.signInWithGoogle).
   user: null,
   listeners: new Set(),
 };

@@ -1,13 +1,9 @@
-/* SafeCycle - API client (STUBBED for Step 1).
+/* SafeCycle - API client.
    ------------------------------------------------------------
-   Every function here returns mock data so the frontend runs with
-   NO backend, NO secrets. In later steps these become real fetch()
-   calls to the FastAPI backend (/api/*) which talks to the logic
-   engine, Claude, and Supabase.
-
-   Search for "STUB" to find what gets replaced. */
-
-import { runEngine } from "./data/questions.js";
+   Talks to the FastAPI backend (/api/*), which runs the logic engine,
+   Claude, and history. Each method translates between the backend's
+   schemas and the shapes the views render (see the shape adapters below).
+   saveSession remains a stub until a backend save endpoint exists. */
 
 // Base URL of the FastAPI backend. Override at runtime by setting
 // window.SAFECYCLE_API_BASE before this module loads (e.g. in index.html).

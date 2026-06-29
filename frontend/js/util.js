@@ -26,7 +26,7 @@ export function clearFieldError(fieldEl, errorEl) {
   if (fieldEl) fieldEl.classList.remove("is-invalid");
 }
 
-/** Markup for a "Sign in with Google" button (stubbed auth for now). */
+/** Markup for a "Sign in with Google" button. */
 export function googleButton(id, label = "Sign in with Google") {
   return `<button id="${id}" class="btn btn--google btn--block">
     ${GOOGLE_G}<span>${label}</span>

@@ -1,6 +1,6 @@
 /* View: Profile - sign-in (Google), account actions, and saved-answer
-   History embedded inline. Auth + history are stubbed until Supabase
-   Google OAuth is wired in a later step. */
+   History embedded inline (history comes from the backend; sign-in uses
+   Google Identity Services via api.signInWithGoogle). */
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
