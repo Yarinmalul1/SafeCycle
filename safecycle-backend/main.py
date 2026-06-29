@@ -13,14 +13,13 @@ stages in the SafeCycle agent pipeline.
 
 from __future__ import annotations
 
-import base64
-import binascii
-import json
 import os
 
 import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
@@ -247,38 +246,45 @@ def history(user_id: str = DEMO_USER, limit: int = 5) -> list[HistorySession]:
 # --------------------------------------------------------------------------- #
 # Auth role — Google sign-in endpoint
 # --------------------------------------------------------------------------- #
-def _decode_jwt_claims(token: str) -> dict:
-    """Decode (without verifying) the claims from a JWT's payload segment.
+def _verify_google_token(token: str, audience: str) -> dict:
+    """Verify a Google ID token and return its claims.
 
-    NOTE: this only base64url-decodes the middle segment — it does NOT verify
-    the signature, issuer, audience, or expiry. That is a deliberate shortcut
-    for local development; before production this must be replaced with proper
-    verification of the Google ID token (e.g. google-auth's verify_oauth2_token).
+    Thin wrapper around google-auth's verify_oauth2_token so tests can stub one
+    function (``main._verify_google_token``) instead of reaching into the
+    google.oauth2 module. Verifies the JWT signature against Google's public
+    keys, the issuer, the audience (must equal ``audience``), and the expiry.
     """
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise HTTPException(status_code=401, detail="Invalid Google credential.")
-    payload = parts[1]
-    # JWT uses base64url without padding; restore it before decoding.
-    payload += "=" * (-len(payload) % 4)
-    try:
-        return json.loads(base64.urlsafe_b64decode(payload))
-    except (binascii.Error, ValueError) as exc:
-        raise HTTPException(status_code=401, detail="Invalid Google credential.") from exc
+    return google_id_token.verify_oauth2_token(
+        token, google_requests.Request(), audience
+    )
 
 
 @app.post("/api/auth/google", response_model=AuthUser)
 def auth_google(req: GoogleAuthRequest) -> AuthUser:
     """Sign a user in from a Google ID token and store their session.
 
-    Decodes the token's claims for name/email, derives a stable user id, and
-    records the session in memory so the rest of the app can recognise the user.
+    Strictly verifies the ID token via google-auth (signature, issuer,
+    audience, expiry), refuses unverified emails, then records the session.
     """
-    claims = _decode_jwt_claims(req.credential)
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(
+            status_code=500,
+            detail="Google sign-in is not configured on the server.",
+        )
+
+    try:
+        claims = _verify_google_token(req.credential, client_id)
+    except ValueError as exc:
+        # google-auth raises ValueError for any verification failure:
+        # bad signature, wrong audience, expired, malformed.
+        raise HTTPException(status_code=401, detail="Invalid Google credential.") from exc
 
     email = claims.get("email")
     if not email:
         raise HTTPException(status_code=401, detail="Google credential is missing an email.")
+    if claims.get("email_verified") is False:
+        raise HTTPException(status_code=401, detail="Google email is not verified.")
 
     # `sub` is Google's stable per-user id; fall back to the email if absent.
     user_id = claims.get("sub") or email

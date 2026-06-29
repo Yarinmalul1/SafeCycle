@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-key-not-used")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client-id.apps.googleusercontent.com")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -72,6 +73,32 @@ def _stub_fallback(monkeypatch):
         "main.guidance_fallback.fallback_guidance",
         lambda scenario, engine_result, client: "FALLBACK: AI-generated guidance.",
     )
+
+
+@pytest.fixture(autouse=True)
+def _stub_google_verify(monkeypatch):
+    """Avoid hitting Google's certs in tests.
+
+    Decodes the unsigned payload from `_fake_id_token` without verification, so
+    tests can exercise the auth endpoint's downstream logic without a live
+    Google connection. Tests that need to simulate a *bad* token still get a
+    rejection because `_fake_id_token('not-a-jwt')` is malformed and raises.
+    """
+    import base64
+    import binascii
+    import json
+
+    def fake_verify(token: str, audience: str) -> dict:
+        parts = token.split(".")
+        if len(parts) != 3:
+            raise ValueError("malformed token")
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        try:
+            return json.loads(base64.urlsafe_b64decode(payload))
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("malformed payload") from exc
+
+    monkeypatch.setattr("main._verify_google_token", fake_verify)
 
 
 @pytest.fixture(autouse=True)
@@ -455,3 +482,19 @@ def test_auth_google_returns_profile_and_stores_session():
 def test_auth_google_rejects_malformed_credential():
     response = client.post("/api/auth/google", json={"credential": "not-a-jwt"})
     assert response.status_code == 401
+
+
+def test_auth_google_rejects_unverified_email():
+    # Google ID tokens carry an email_verified claim; we must refuse the
+    # sign-in if Google did not verify the user owns the email.
+    token = _fake_id_token(
+        {
+            "sub": "9999",
+            "email": "spoofy@example.com",
+            "name": "Spoofy",
+            "email_verified": False,
+        }
+    )
+    response = client.post("/api/auth/google", json={"credential": token})
+    assert response.status_code == 401
+    assert "verified" in response.json()["detail"].lower()
