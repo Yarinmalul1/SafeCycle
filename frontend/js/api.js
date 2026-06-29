@@ -261,4 +261,14 @@ export const api = {
       return { ok: false, reason: err.message };
     }
   },
+
+  /**
+   * DEV ONLY - sign in as a fixed test user, bypassing Google entirely.
+   * Lets us exercise the gated flow before a real Google Client ID exists.
+   * The UI only exposes this on localhost (see isDevHost), so it never reaches
+   * a deployed build.
+   */
+  async signInAsDemo() {
+    return { ok: true, user: { name: "Test User", email: "test@example.com" } };
+  },
 };

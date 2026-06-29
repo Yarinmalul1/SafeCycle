@@ -3,7 +3,7 @@
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
-import { googleButton } from "../util.js";
+import { googleButton, isDevHost } from "../util.js";
 import { toast } from "../toast.js";
 
 const TRUST = [
@@ -26,6 +26,9 @@ const TRUST = [
 
 export const WelcomeView = {
   render() {
+    const devSkip = isDevHost()
+      ? `<button id="welcome-demo" class="btn btn--ghost btn--block">Skip to Demo (test user)</button>`
+      : "";
     return {
       title: "SafeCycle",
       html: `
@@ -47,6 +50,7 @@ export const WelcomeView = {
             <button id="welcome-learn" class="btn btn--secondary btn--block">
               Learn how SafeCycle works
             </button>
+            ${devSkip}
             <p class="subtle">Sign in keeps your answers private and saved to your account.</p>
           </div>
 
@@ -69,6 +73,18 @@ export const WelcomeView = {
         el.querySelector("#welcome-learn").addEventListener("click", () =>
           router.go("/info")
         );
+
+        const demoBtn = el.querySelector("#welcome-demo");
+        if (demoBtn) {
+          demoBtn.addEventListener("click", async () => {
+            const res = await api.signInAsDemo();
+            if (res.ok && res.user) {
+              state.setUser(res.user);
+              state.reset();
+              router.go("/dashboard");
+            }
+          });
+        }
 
         const googleBtn = el.querySelector("#welcome-google");
         googleBtn.addEventListener("click", async () => {
