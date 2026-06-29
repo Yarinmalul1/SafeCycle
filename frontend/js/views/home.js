@@ -83,9 +83,14 @@ export const HomeView = {
           }
           state.reset();
           state.update({ rawInput: text });
-          // STUB parse - may pre-fill method to skip a step later.
-          const parsed = await api.parseInput(text);
-          if (parsed.method) state.update({ method: parsed.method });
+          // Parse may pre-fill the method to skip a step later. It's only a
+          // hint, so if the backend is unreachable we still continue the flow.
+          try {
+            const parsed = await api.parseInput(text);
+            if (parsed.method) state.update({ method: parsed.method });
+          } catch {
+            /* non-fatal: proceed without the pre-filled method */
+          }
           router.go("/method");
         };
 

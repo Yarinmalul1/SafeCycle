@@ -17,6 +17,42 @@ const FAKE_LATENCY = 450; // ms - mimic a network round-trip for realistic UI
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Shared fetch wrapper. Throws an Error with a user-readable `message` on
+ * network failure or any non-2xx response, so callers can surface it (e.g.
+ * via a toast) instead of getting a half-parsed body. FastAPI reports errors
+ * as { detail }, where detail is either a string (our 422 clarifying
+ * questions) or a list of validation errors.
+ */
+async function request(path, options) {
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, options);
+  } catch {
+    throw new Error("Can't reach SafeCycle right now. Check your connection and try again.");
+  }
+
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    /* empty or non-JSON body - leave body null */
+  }
+
+  if (!res.ok) {
+    const detail = body && body.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail) && detail[0] && detail[0].msg
+        ? detail[0].msg
+        : `Something went wrong (${res.status}). Please try again.`;
+    throw new Error(message);
+  }
+
+  return body;
+}
+
 export const api = {
   /**
    * Input parser (Claude, via the backend).
@@ -28,12 +64,11 @@ export const api = {
    * implies the pill flow. (Full response mapping lives in the adapters below.)
    */
   async parseInput(text) {
-    const res = await fetch(`${API_BASE}/api/parse-input`, {
+    const parsed = await request("/api/parse-input", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userInput: text }),
     });
-    const parsed = await res.json();
     return {
       ...parsed,
       method: parsed.product ? "pill" : null,
@@ -65,12 +100,11 @@ export const api = {
       clarifyingQuestion: null,
     };
 
-    const res = await fetch(`${API_BASE}/api/guidance`, {
+    const resp = await request("/api/guidance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(parsed),
     });
-    const resp = await res.json();
 
     const g = resp.guidance;
     const status =
@@ -112,8 +146,7 @@ export const api = {
    * Mapped into the compact shape the Profile list renders.
    */
   async getHistory() {
-    const res = await fetch(`${API_BASE}/api/history`);
-    const sessions = await res.json();
+    const sessions = await request("/api/history");
     return sessions.map((s) => ({
       id: s.id,
       headline: s.guidance?.summary || s.message,

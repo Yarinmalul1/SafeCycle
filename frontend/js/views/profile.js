@@ -76,7 +76,13 @@ export const ProfileView = {
         });
 
         const histEl = el.querySelector("#profile-history");
-        const sessions = await api.getHistory();
+        let sessions;
+        try {
+          sessions = await api.getHistory();
+        } catch (err) {
+          histEl.innerHTML = `<div class="empty"><p class="muted">${escapeHtml(err.message)}</p></div>`;
+          return;
+        }
 
         if (!sessions.length) {
           histEl.innerHTML = `

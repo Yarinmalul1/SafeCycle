@@ -60,7 +60,27 @@ export const ResultView = {
         <div id="result-body" hidden></div>
       `,
       async onMount(el) {
-        const result = await api.getGuidance(s);
+        let result;
+        try {
+          result = await api.getGuidance(s);
+        } catch (err) {
+          el.querySelector("#result-loading").hidden = true;
+          const body = el.querySelector("#result-body");
+          body.hidden = false;
+          body.innerHTML = `
+            <div class="card stack" style="gap:var(--space-2)">
+              <strong>We couldn't work out your steps</strong>
+              <p class="muted">${err.message}</p>
+              <button id="result-retry" class="btn btn--primary btn--block">Try again</button>
+              <button id="result-clinician" class="clinician-link">
+                <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
+              </button>
+            </div>`;
+          body.querySelector("#result-retry").addEventListener("click", () => router.go("/result"));
+          body.querySelector("#result-clinician").addEventListener("click", () => openEscalation());
+          toast(err.message);
+          return;
+        }
         state.update({ result });
 
         // Safety filter: hard-route urgent cases.
