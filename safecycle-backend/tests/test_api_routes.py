@@ -202,6 +202,30 @@ def test_guidance_unknown_product_triggers_fallback():
     assert body["guidance"]["riskLevel"] in {"none", "low", "moderate", "high"}
 
 
+def test_guidance_fallback_response_has_valid_shape():
+    # The fallback path must still satisfy the GuidanceResponse contract so
+    # the frontend can render it like any other guidance result.
+    response = client.post(
+        "/api/guidance", json=_parsed(product="mystery-pill", cycleWeek=1)
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert {"guidance", "message", "source"} <= body.keys()
+    assert isinstance(body["message"], str) and body["message"]
+    assert body["source"] in {"engine", "fallback"}
+    g = body["guidance"]
+    assert {
+        "riskLevel",
+        "takePillNow",
+        "useBackup",
+        "backupDays",
+        "considerEmergencyContraception",
+        "skipPlaceboBreak",
+        "summary",
+        "notes",
+    } <= g.keys()
+
+
 # --------------------------------------------------------------------------- #
 # /api/safety-filter
 # --------------------------------------------------------------------------- #

@@ -22,6 +22,14 @@ from models import GuidanceResult, ParsedScenario
 # Keep in sync with the model default in main.py.
 DEFAULT_MODEL = "claude-opus-4-8"
 
+# Mandatory tail appended to every fallback message. The fallback is not a
+# clinically-reviewed rule, so users must always see that this is AI-assisted
+# guidance and that medical concerns belong with a pharmacist or doctor.
+DISCLAIMER = (
+    "This is AI-assisted guidance. For medical concerns, consult a pharmacist "
+    "or doctor."
+)
+
 FALLBACK_SYSTEM = (
     "You are SafeCycle's fallback contraception advisor. The deterministic "
     "rules engine has no rule set for the user's scenario, so they need "
@@ -33,14 +41,15 @@ FALLBACK_SYSTEM = (
     "to a pharmacist or doctor.\n"
     "- Do not invent specific timings, percentages, or named drug "
     "interactions that you are not certain about.\n"
-    "- Reply in 2-4 sentences. No markdown, no lists, no headings."
+    "- Reply in 2-4 sentences. No markdown, no lists, no headings.\n"
+    f"- Always end with this exact sentence: '{DISCLAIMER}'"
 )
 
 # Used when Claude cannot be reached. Deliberately generic and conservative.
 SAFE_DEFAULT = (
     "I don't have specific rules for this scenario yet. To stay safe, use "
     "barrier backup such as condoms for the next 7 days and speak to a "
-    "pharmacist or doctor as soon as you can."
+    f"pharmacist or doctor as soon as you can. {DISCLAIMER}"
 )
 
 
@@ -80,4 +89,9 @@ def fallback_guidance(
     text = "".join(
         block.text for block in response.content if getattr(block, "type", None) == "text"
     ).strip()
-    return text or SAFE_DEFAULT
+    if not text:
+        return SAFE_DEFAULT
+    # Belt-and-braces: enforce the disclaimer even if the model omitted it.
+    if DISCLAIMER not in text:
+        text = f"{text} {DISCLAIMER}"
+    return text
