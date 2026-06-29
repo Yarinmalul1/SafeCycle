@@ -116,7 +116,8 @@ def test_guidance_missing_product_returns_422():
     assert "product" in response.json()["detail"].lower()
 
 
-def test_guidance_missing_cycle_week_returns_422():
+def test_guidance_missing_cycle_week_for_combined_pill_returns_422():
+    # Combined pills (yasmin) still require cycleWeek — their rules branch on it.
     response = client.post("/api/guidance", json=_parsed(cycleWeek=None))
     assert response.status_code == 422
     assert "week" in response.json()["detail"].lower()
@@ -126,6 +127,43 @@ def test_guidance_invalid_cycle_week_returns_422():
     # cycleWeek out of the engine's 1-4 range -> validation error.
     response = client.post("/api/guidance", json=_parsed(cycleWeek=9))
     assert response.status_code == 422
+
+
+def test_guidance_progestogen_only_pill_does_not_require_cycle_week():
+    # POPs have no pack-week concept; the endpoint must accept cycleWeek=None.
+    response = client.post(
+        "/api/guidance",
+        json=_parsed(product="cerazette", cycleWeek=None, hoursLate=15),
+    )
+    assert response.status_code == 200
+    guidance = response.json()["guidance"]
+    # Cerazette has a 12h window; 15h late is past it -> moderate risk + backup.
+    assert guidance["riskLevel"] == "moderate"
+    assert guidance["useBackup"] is True
+
+
+def test_guidance_vaginal_ring_does_not_require_cycle_week():
+    # The ring has no pack week either; only hoursLate matters.
+    response = client.post(
+        "/api/guidance",
+        json=_parsed(product="nuvaring", cycleWeek=None, hoursLate=50),
+    )
+    assert response.status_code == 200
+    guidance = response.json()["guidance"]
+    # >=48h out -> moderate risk + 7 days backup.
+    assert guidance["riskLevel"] == "moderate"
+    assert guidance["useBackup"] is True
+    assert guidance["backupDays"] == 7
+
+
+def test_guidance_extended_cycle_pill_does_not_require_cycle_week():
+    # Extended-cycle pills (seasonique) ignore weekly placebo logic too.
+    response = client.post(
+        "/api/guidance",
+        json=_parsed(product="seasonique", cycleWeek=None, pillsMissed=2),
+    )
+    assert response.status_code == 200
+    assert response.json()["guidance"]["useBackup"] is True
 
 
 # --------------------------------------------------------------------------- #

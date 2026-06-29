@@ -31,6 +31,7 @@ from ai import (
     question_generator,
     safety_filter,
 )
+from ai.product_catalog import pill_type
 from db import queries
 from logic import engine, switching
 from models import (
@@ -43,6 +44,7 @@ from models import (
     ParsedScenario,
     ParseInputRequest,
     PillScenario,
+    PillType,
     ProductInfo,
     QuestionResult,
     SafetyFilterResult,
@@ -137,16 +139,17 @@ def parse_input(req: ParseInputRequest) -> ParsedScenario:
 def _to_pill_scenario(parsed: ParsedScenario) -> PillScenario:
     """Narrow a parsed scenario into the engine's validated `PillScenario`.
 
-    The engine needs a product and a known pack week. When either is missing,
-    we return a 422 with a single, user-facing clarifying question rather than
-    guessing — gap-filling is the parser / question-generator's job upstream.
+    The engine always needs a product. cycleWeek is only meaningful for combined
+    pills (their rules branch on week 1/2/3/4); progestogen-only pills, the
+    vaginal ring, and extended-cycle pills ignore it. We therefore only demand
+    cycleWeek when the product is a combined pill.
     """
     if not parsed.product:
         raise HTTPException(
             status_code=422,
             detail="Which contraceptive product is this about?",
         )
-    if parsed.cycleWeek is None:
+    if pill_type(parsed.product) is PillType.COMBINED and parsed.cycleWeek is None:
         raise HTTPException(
             status_code=422,
             detail="Which week of your pill pack are you in (1-4)?",

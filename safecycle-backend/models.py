@@ -114,11 +114,13 @@ class PillScenario(BaseModel):
     """
 
     product: str = Field(..., description="Product name, lowercase (e.g. 'yasmin').")
-    cycleWeek: int = Field(
-        ...,
+    cycleWeek: Optional[int] = Field(
+        None,
         ge=1,
         le=4,
-        description="Week of the pill pack (1-3 active, 4 = placebo/break).",
+        description="Week of the pill pack (1-3 active, 4 = placebo/break). "
+        "Required for combined pills; POPs / ring / extended-cycle ignore it "
+        "and accept null.",
     )
     pillsMissed: int = Field(
         0,
