@@ -93,3 +93,30 @@ def test_micronor_stricter_than_cerazette_at_same_delay():
     assert micronor.riskLevel is RiskLevel.MODERATE
     assert micronor.useBackup is True
     assert micronor.backupDays == 2
+
+
+# --------------------------------------------------------------------------- #
+# Seasonique — extended-cycle combined pill (84 active + 7)
+# --------------------------------------------------------------------------- #
+def test_seasonique_is_extended_cycle_and_supported():
+    assert product_catalog.pill_type("seasonique") is PillType.EXTENDED_CYCLE
+    assert product_catalog.is_supported("seasonique") is True
+
+
+def test_seasonique_one_missed_is_low_risk():
+    result = evaluate(_scenario("seasonique", pillsMissed=1))
+    assert result.riskLevel is RiskLevel.LOW
+    assert result.useBackup is False
+
+
+def test_seasonique_two_missed_needs_backup_and_mentions_continuous():
+    result = evaluate(_scenario("seasonique", pillsMissed=2))
+    assert result.useBackup is True
+    assert result.backupDays == 7
+    assert any("extended-cycle" in n.lower() for n in result.notes)
+
+
+def test_seasonique_two_missed_with_unprotected_sex_is_high_risk():
+    result = evaluate(_scenario("seasonique", pillsMissed=2, unprotectedSex=True))
+    assert result.riskLevel is RiskLevel.HIGH
+    assert result.considerEmergencyContraception is True

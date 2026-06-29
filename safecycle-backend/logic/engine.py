@@ -45,6 +45,8 @@ def evaluate(scenario: PillScenario) -> GuidanceResult:
         return _evaluate_combined(scenario)
     if ptype is PillType.PROGESTOGEN_ONLY:
         return _evaluate_pop(scenario, pop_window_hours(scenario.product))
+    if ptype is PillType.EXTENDED_CYCLE:
+        return _evaluate_extended(scenario)
 
     return GuidanceResult(
         riskLevel=RiskLevel.MODERATE,
@@ -113,6 +115,64 @@ def _evaluate_pop(scenario: PillScenario, window_hours: int) -> GuidanceResult:
             "last few days."
         ),
         notes=[f"Progestogen-only pills must be taken within {window_hours} hours."],
+    )
+
+
+def _evaluate_extended(scenario: PillScenario) -> GuidanceResult:
+    """Missed-pill rules for extended-cycle combined pills (e.g. Seasonique).
+
+    These are combined pills taken continuously for a long active phase (~84
+    days) with infrequent breaks, so there is no weekly placebo logic — the user
+    is almost always mid-active-phase. Missed-pill handling mirrors the combined
+    pill: one missed pill is low risk; two or more need backup.
+    """
+    missed = _missed_count(scenario)
+
+    if missed == 0:
+        if scenario.hoursLate is not None and scenario.hoursLate > 0:
+            return GuidanceResult(
+                riskLevel=RiskLevel.NONE,
+                takePillNow=True,
+                summary=(
+                    "You're less than 24 hours late. Take this pill now and your "
+                    "next one at the usual time — you're still protected."
+                ),
+            )
+        return GuidanceResult(
+            riskLevel=RiskLevel.NONE,
+            takePillNow=False,
+            summary="No pills missed — you're protected. Carry on as usual.",
+        )
+
+    if missed == 1:
+        return GuidanceResult(
+            riskLevel=RiskLevel.LOW,
+            takePillNow=True,
+            summary=(
+                "One missed pill: take the most recent missed pill now (even if "
+                "that means two in one day) and continue the pack as normal. No "
+                "extra protection is needed."
+            ),
+        )
+
+    # Two or more missed active pills.
+    return GuidanceResult(
+        riskLevel=RiskLevel.HIGH if scenario.unprotectedSex else RiskLevel.MODERATE,
+        takePillNow=True,
+        useBackup=True,
+        backupDays=BACKUP_DAYS,
+        considerEmergencyContraception=scenario.unprotectedSex,
+        summary=(
+            "Two or more pills missed: take the most recent missed pill now and "
+            "use backup contraception for the next 7 days. Keep taking one active "
+            "pill a day — with an extended-cycle pill you usually won't have a "
+            "break for several more weeks. Consider emergency contraception if you "
+            "had unprotected sex in the last few days."
+        ),
+        notes=[
+            "Extended-cycle pills are taken continuously (~84 active days) before "
+            "a scheduled break."
+        ],
     )
 
 

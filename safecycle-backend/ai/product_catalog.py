@@ -18,10 +18,15 @@ CATALOG: dict[str, PillType] = {
     "yaz": PillType.COMBINED,  # combined, 24 active + 4 inactive
     "cerazette": PillType.PROGESTOGEN_ONLY,  # desogestrel, 12h window
     "micronor": PillType.PROGESTOGEN_ONLY,  # norethisterone, 3h window
+    "seasonique": PillType.EXTENDED_CYCLE,  # 84 active + 7 low-dose
 }
 
 # Pill families the logic engine currently has a rule set for.
-SUPPORTED_TYPES: set[PillType] = {PillType.COMBINED, PillType.PROGESTOGEN_ONLY}
+SUPPORTED_TYPES: set[PillType] = {
+    PillType.COMBINED,
+    PillType.PROGESTOGEN_ONLY,
+    PillType.EXTENDED_CYCLE,
+}
 
 # Progestogen-only pills must be taken within a per-product window (in hours).
 # Desogestrel POPs (e.g. Cerazette) allow 12 hours; older norethisterone POPs
