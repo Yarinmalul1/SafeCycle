@@ -220,6 +220,12 @@ class GuidanceResponse(BaseModel):
         ...,
         description="Warm, plain-language phrasing of the guidance for the user.",
     )
+    source: str = Field(
+        "engine",
+        description="Where the message came from: 'engine' (deterministic rules "
+        "phrased by Claude) or 'fallback' (Claude-generated guidance for a "
+        "scenario the engine has no rules for).",
+    )
 
 
 # --------------------------------------------------------------------------- #

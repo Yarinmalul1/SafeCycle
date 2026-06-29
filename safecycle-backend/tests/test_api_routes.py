@@ -66,6 +66,15 @@ def _stub_phraser(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _stub_fallback(monkeypatch):
+    """Avoid real LLM calls in the Claude fallback path."""
+    monkeypatch.setattr(
+        "main.guidance_fallback.fallback_guidance",
+        lambda scenario, engine_result, client: "FALLBACK: AI-generated guidance.",
+    )
+
+
+@pytest.fixture(autouse=True)
 def _reset_history():
     """Each test starts with an empty in-memory history store."""
     from db import queries
@@ -164,6 +173,33 @@ def test_guidance_extended_cycle_pill_does_not_require_cycle_week():
     )
     assert response.status_code == 200
     assert response.json()["guidance"]["useBackup"] is True
+
+
+# --------------------------------------------------------------------------- #
+# /api/guidance - Claude fallback path
+# --------------------------------------------------------------------------- #
+def test_guidance_known_product_uses_engine_source():
+    # Known product -> engine path -> source="engine".
+    response = client.post("/api/guidance", json=_parsed(pillsMissed=1, cycleWeek=2))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "engine"
+    assert body["message"].startswith("PHRASED:")
+
+
+def test_guidance_unknown_product_triggers_fallback():
+    # Unknown product -> Claude fallback -> source="fallback" and the message
+    # comes from the fallback (stubbed), not the answer phraser.
+    response = client.post(
+        "/api/guidance", json=_parsed(product="mystery-pill", cycleWeek=1)
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "fallback"
+    assert body["message"].startswith("FALLBACK:")
+    # The engine still returns its conservative "unsupported" result for shape.
+    assert "guidance" in body
+    assert body["guidance"]["riskLevel"] in {"none", "low", "moderate", "high"}
 
 
 # --------------------------------------------------------------------------- #

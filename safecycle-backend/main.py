@@ -26,6 +26,7 @@ from pydantic import ValidationError
 
 from ai import (
     answer_phraser,
+    guidance_fallback,
     history_manager,
     product_catalog,
     question_generator,
@@ -171,14 +172,25 @@ def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceRespon
     """Run the logic engine over a parsed scenario and phrase the result.
 
     Pipeline: ParsedScenario -> PillScenario -> deterministic engine decision
-    -> Answer Phraser -> user-facing message. The session is recorded so it
-    shows up under GET /api/history.
+    -> Answer Phraser (for known products) OR Claude fallback (for unknown
+    products the engine has no rules for) -> user-facing message. The session
+    is recorded so it shows up under GET /api/history.
     """
     scenario = _to_pill_scenario(parsed)
     result = engine.evaluate(scenario)
-    message = answer_phraser.phrase(result, client=client)
+
+    # Unknown products land in the engine's "unsupported" branch; instead of
+    # showing the canned "speak to a pharmacist" string, ask Claude to generate
+    # safe, scenario-specific guidance.
+    if pill_type(scenario.product) is PillType.UNKNOWN:
+        message = guidance_fallback.fallback_guidance(parsed, result, client=client)
+        source = "fallback"
+    else:
+        message = answer_phraser.phrase(result, client=client)
+        source = "engine"
+
     history_manager.record(user_id, scenario, result, message)
-    return GuidanceResponse(guidance=result, message=message)
+    return GuidanceResponse(guidance=result, message=message, source=source)
 
 
 # --------------------------------------------------------------------------- #
