@@ -134,12 +134,48 @@ def _stub_supabase_users(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _reset_history():
-    """Each test starts with an empty in-memory history store."""
+    """Each test starts with an empty in-memory store (still used by queries)."""
     from db import queries
 
     queries.reset()
     yield
     queries.reset()
+
+
+@pytest.fixture(autouse=True)
+def _stub_sessions(monkeypatch):
+    """Replace db.sessions with an in-memory list-backed stub.
+
+    Lets tests exercise /api/guidance + /api/history end-to-end without
+    touching Supabase. Yields the in-memory store so individual tests can
+    assert on what was written.
+    """
+    store: list[dict] = []
+    counter = {"n": 0}
+
+    def record(*, user_id, input_text, product, parsed_data, guidance_result,
+               message, source):
+        counter["n"] += 1
+        row = {
+            "id": f"session-{counter['n']}",
+            "user_id": user_id,
+            "input_text": input_text,
+            "product": product,
+            "parsed_data": parsed_data,
+            "guidance_result": guidance_result,
+            "message": message,
+            "source": source,
+            "created_at": f"2026-06-29T20:00:{counter['n']:02d}Z",
+        }
+        store.append(row)
+        return row
+
+    def recent_for_user(user_id, limit=20):
+        return [r for r in reversed(store) if r["user_id"] == user_id][:limit]
+
+    monkeypatch.setattr("main.sessions.record", record)
+    monkeypatch.setattr("main.sessions.recent_for_user", recent_for_user)
+    yield store
 
 
 def test_guidance_two_missed_week1_is_moderate_and_phrased():
@@ -435,6 +471,29 @@ def test_history_is_scoped_per_user():
     client.post("/api/guidance", json=_parsed(), params={"user_id": "carol"})
     response = client.get("/api/history", params={"user_id": "dave"})
     assert response.json() == []
+
+
+def test_guidance_persists_source_on_session_row(_stub_sessions):
+    # Engine path -> source=engine on the persisted row.
+    client.post("/api/guidance", json=_parsed(pillsMissed=1, cycleWeek=2),
+                params={"user_id": "alice"})
+    # Fallback path -> source=fallback on the persisted row.
+    client.post("/api/guidance", json=_parsed(product="mystery-pill", cycleWeek=1),
+                params={"user_id": "alice"})
+    assert [r["source"] for r in _stub_sessions] == ["engine", "fallback"]
+
+
+def test_guidance_returns_200_even_if_session_write_fails(monkeypatch):
+    # Supabase hiccup must NOT take down the user-facing guidance flow:
+    # /api/guidance is best-effort about persistence.
+    def boom(**kwargs):
+        raise RuntimeError("supabase write failed")
+
+    monkeypatch.setattr("main.sessions.record", boom)
+    response = client.post("/api/guidance", json=_parsed(pillsMissed=1, cycleWeek=2),
+                           params={"user_id": "alice"})
+    assert response.status_code == 200
+    assert "message" in response.json()
 
 
 # --------------------------------------------------------------------------- #

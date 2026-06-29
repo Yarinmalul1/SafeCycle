@@ -32,7 +32,7 @@ from ai import (
     safety_filter,
 )
 from ai.product_catalog import pill_type
-from db import queries, users
+from db import queries, sessions, users
 from logic import engine, switching
 from models import (
     AskQuestionRequest,
@@ -188,7 +188,22 @@ def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceRespon
         message = answer_phraser.phrase(result, client=client)
         source = "engine"
 
-    history_manager.record(user_id, scenario, result, message)
+    # Persist the session for /api/history. We intentionally don't fail the
+    # whole request if the Supabase write hiccups -- the user already has their
+    # guidance; losing the history record is a tolerable degradation.
+    try:
+        sessions.record(
+            user_id=user_id,
+            input_text=None,
+            product=scenario.product,
+            parsed_data=scenario.model_dump(mode="json"),
+            guidance_result=result.model_dump(mode="json"),
+            message=message,
+            source=source,
+        )
+    except Exception:  # noqa: BLE001 - intentional broad catch (write is best-effort)
+        pass
+
     return GuidanceResponse(guidance=result, message=message, source=source)
 
 
@@ -238,9 +253,24 @@ def products() -> list[ProductInfo]:
 # History Manager role — endpoint
 # --------------------------------------------------------------------------- #
 @app.get("/api/history", response_model=list[HistorySession])
-def history(user_id: str = DEMO_USER, limit: int = 5) -> list[HistorySession]:
-    """Return a user's past guidance sessions, newest first."""
-    return [HistorySession(**s) for s in history_manager.recent(user_id, limit)]
+def history(user_id: str = DEMO_USER, limit: int = 20) -> list[HistorySession]:
+    """Return a user's past guidance sessions, newest first.
+
+    Reads from the Supabase 'sessions' table. The frontend passes the user_id
+    it received from /api/auth/google as a query param; the backend trusts that
+    string and filters by it (see the Phase 2 architecture notes).
+    """
+    rows = sessions.recent_for_user(user_id, limit=limit)
+    return [
+        HistorySession(
+            id=row["id"],
+            createdAt=row["created_at"],
+            scenario=row["parsed_data"],
+            guidance=row["guidance_result"],
+            message=row["message"],
+        )
+        for row in rows
+    ]
 
 
 # --------------------------------------------------------------------------- #
