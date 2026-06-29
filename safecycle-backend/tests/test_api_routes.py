@@ -65,6 +65,16 @@ def _stub_phraser(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _reset_history():
+    """Each test starts with an empty in-memory history store."""
+    from db import queries
+
+    queries.reset()
+    yield
+    queries.reset()
+
+
 def test_guidance_two_missed_week1_is_moderate_and_phrased():
     response = client.post("/api/guidance", json=_parsed(pillsMissed=2, cycleWeek=1))
     assert response.status_code == 200
@@ -205,3 +215,46 @@ def test_products_mark_combined_as_supported():
     assert by_name["yasmin"]["supported"] is True
     # Progestogen-only has no rule set yet.
     assert by_name["cerazette"]["supported"] is False
+
+
+# --------------------------------------------------------------------------- #
+# /api/history
+# --------------------------------------------------------------------------- #
+def test_history_empty_for_unknown_user():
+    response = client.get("/api/history", params={"user_id": "nobody"})
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_guidance_records_a_history_session():
+    client.post("/api/guidance", json=_parsed(pillsMissed=2, cycleWeek=1),
+                params={"user_id": "alice"})
+
+    response = client.get("/api/history", params={"user_id": "alice"})
+    assert response.status_code == 200
+    sessions = response.json()
+    assert len(sessions) == 1
+    session = sessions[0]
+    assert session["scenario"]["product"] == "yasmin"
+    assert session["guidance"]["riskLevel"] == "moderate"
+    assert session["message"].startswith("PHRASED:")
+    assert "id" in session and "createdAt" in session
+
+
+def test_history_is_newest_first_and_respects_limit():
+    for week in (1, 2, 3):
+        client.post("/api/guidance", json=_parsed(pillsMissed=2, cycleWeek=week),
+                    params={"user_id": "bob"})
+
+    response = client.get("/api/history", params={"user_id": "bob", "limit": 2})
+    sessions = response.json()
+    assert len(sessions) == 2
+    # Newest first: last posted (week 3) comes first.
+    assert sessions[0]["scenario"]["cycleWeek"] == 3
+    assert sessions[1]["scenario"]["cycleWeek"] == 2
+
+
+def test_history_is_scoped_per_user():
+    client.post("/api/guidance", json=_parsed(), params={"user_id": "carol"})
+    response = client.get("/api/history", params={"user_id": "dave"})
+    assert response.json() == []

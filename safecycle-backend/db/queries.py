@@ -1,20 +1,37 @@
-"""Database queries (stubbed).
+"""Database queries — in-memory implementation.
 
-This is the only module that should talk to the database directly. For now every
-function is a stub so the rest of the app can import a stable interface while the
-storage backend is chosen.
+This is the only module that should talk to the storage backend directly. For
+now it keeps everything in a process-local dict so the rest of the app has a
+working, stable interface; swapping in a real database later means changing only
+this file.
+
+NOTE: state lives in memory and is lost on restart — fine for the demo, not for
+production.
 """
 
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
+# user_id -> list of stored session records (oldest first).
+_STORE: dict[str, list[dict[str, Any]]] = {}
+_ids = itertools.count(1)
 
-def save_scenario(user_id: str, scenario: dict[str, Any]) -> str:
-    """Persist a scenario and return its new id."""
-    raise NotImplementedError("DB layer is stubbed.")
+
+def save_scenario(user_id: str, session: dict[str, Any]) -> str:
+    """Persist a session for a user and return its new id."""
+    sid = str(next(_ids))
+    _STORE.setdefault(user_id, []).append({"id": sid, **session})
+    return sid
 
 
 def get_scenarios(user_id: str, limit: int = 5) -> list[dict[str, Any]]:
-    """Return recent scenarios for a user, newest first."""
-    raise NotImplementedError("DB layer is stubbed.")
+    """Return a user's most recent sessions, newest first."""
+    items = _STORE.get(user_id, [])
+    return list(reversed(items))[:limit]
+
+
+def reset() -> None:
+    """Clear all stored data. Intended for tests."""
+    _STORE.clear()

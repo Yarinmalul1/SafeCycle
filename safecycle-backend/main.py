@@ -20,11 +20,18 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
-from ai import answer_phraser, product_catalog, question_generator, safety_filter
+from ai import (
+    answer_phraser,
+    history_manager,
+    product_catalog,
+    question_generator,
+    safety_filter,
+)
 from logic import engine
 from models import (
     AskQuestionRequest,
     GuidanceResponse,
+    HistorySession,
     ParsedScenario,
     ParseInputRequest,
     PillScenario,
@@ -32,6 +39,9 @@ from models import (
     QuestionResult,
     SafetyFilterResult,
 )
+
+# Default user id used until real auth is wired up.
+DEMO_USER = "demo-user"
 
 load_dotenv()
 
@@ -134,15 +144,17 @@ def _to_pill_scenario(parsed: ParsedScenario) -> PillScenario:
 
 
 @app.post("/api/guidance", response_model=GuidanceResponse)
-def guidance(parsed: ParsedScenario) -> GuidanceResponse:
+def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceResponse:
     """Run the logic engine over a parsed scenario and phrase the result.
 
     Pipeline: ParsedScenario -> PillScenario -> deterministic engine decision
-    -> Answer Phraser -> user-facing message.
+    -> Answer Phraser -> user-facing message. The session is recorded so it
+    shows up under GET /api/history.
     """
     scenario = _to_pill_scenario(parsed)
     result = engine.evaluate(scenario)
     message = answer_phraser.phrase(result, client=client)
+    history_manager.record(user_id, scenario, result, message)
     return GuidanceResponse(guidance=result, message=message)
 
 
@@ -171,6 +183,15 @@ def ask_question(req: AskQuestionRequest) -> QuestionResult:
 def products() -> list[ProductInfo]:
     """List the contraceptive products SafeCycle knows about."""
     return [ProductInfo(**p) for p in product_catalog.list_products()]
+
+
+# --------------------------------------------------------------------------- #
+# History Manager role — endpoint
+# --------------------------------------------------------------------------- #
+@app.get("/api/history", response_model=list[HistorySession])
+def history(user_id: str = DEMO_USER, limit: int = 5) -> list[HistorySession]:
+    """Return a user's past guidance sessions, newest first."""
+    return [HistorySession(**s) for s in history_manager.recent(user_id, limit)]
 
 
 if __name__ == "__main__":

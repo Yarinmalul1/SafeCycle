@@ -243,3 +243,16 @@ class ProductInfo(BaseModel):
         description="Whether the logic engine has a rule set for this product's "
         "family yet.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# History Manager role — response
+# --------------------------------------------------------------------------- #
+class HistorySession(BaseModel):
+    """A past guidance session for a user."""
+
+    id: str = Field(..., description="Unique id for this stored session.")
+    createdAt: str = Field(..., description="UTC ISO-8601 timestamp.")
+    scenario: PillScenario = Field(..., description="The scenario evaluated.")
+    guidance: GuidanceResult = Field(..., description="The engine's decision.")
+    message: str = Field(..., description="The phrased message shown to the user.")
