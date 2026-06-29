@@ -58,7 +58,10 @@ async function request(path, options) {
 const GOOGLE_CLIENT_ID =
   (typeof window !== "undefined" && window.SAFECYCLE_GOOGLE_CLIENT_ID) ||
   "649046048632-7e134020mfee0pk0l53tfc5rf7tt55f6.apps.googleusercontent.com";
-const GSI_SRC = "https://accounts.google.com/gsi/client";
+// hl=en forces English in all GIS UI (button labels, error messages) regardless
+// of the user's browser locale. Belt-and-braces alongside renderButton's
+// locale: "en" option below.
+const GSI_SRC = "https://accounts.google.com/gsi/client?hl=en";
 
 let gsiScriptPromise = null;
 
@@ -114,6 +117,8 @@ async function mountGoogleSignInButton(containerEl) {
   await ensureGsiInitialized();
   return new Promise((resolve) => {
     pendingCredentialResolve = resolve;
+    // GIS standard button: max width 400px, locale forced to English so the
+    // label doesn't switch to the browser locale (e.g. Hebrew on RTL systems).
     window.google.accounts.id.renderButton(containerEl, {
       type: "standard",
       theme: "outline",
@@ -121,7 +126,8 @@ async function mountGoogleSignInButton(containerEl) {
       text: "signin_with",
       shape: "rectangular",
       logo_alignment: "left",
-      width: Math.max(240, containerEl.offsetWidth || 320),
+      locale: "en",
+      width: Math.min(400, Math.max(280, containerEl.offsetWidth || 360)),
     });
   });
 }
