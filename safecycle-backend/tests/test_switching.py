@@ -91,3 +91,25 @@ def test_ring_to_patch_with_gap_recommends_backup():
     result = evaluate_switch(_switch(M.VAGINAL_RING, M.PATCH, gapDays=4))
     assert result.useBackup is True
     assert result.riskLevel is RiskLevel.MODERATE
+
+
+# --------------------------------------------------------------------------- #
+# Timing windows: backup duration depends on the method being started
+# --------------------------------------------------------------------------- #
+def test_gap_switch_to_combined_needs_7_days_backup():
+    result = evaluate_switch(_switch(M.PATCH, M.COMBINED_PILL, gapDays=3))
+    assert result.useBackup is True
+    assert result.backupDays == 7
+
+
+def test_gap_switch_to_pop_needs_only_2_days_backup():
+    result = evaluate_switch(
+        _switch(M.COMBINED_PILL, M.PROGESTOGEN_ONLY_PILL, gapDays=3)
+    )
+    assert result.useBackup is True
+    assert result.backupDays == 2
+
+
+def test_gap_summary_mentions_the_gap_length():
+    result = evaluate_switch(_switch(M.COMBINED_PILL, M.VAGINAL_RING, gapDays=5))
+    assert "5-day gap" in result.summary

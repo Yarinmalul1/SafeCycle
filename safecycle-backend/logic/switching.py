@@ -28,6 +28,22 @@ SUPPORTED_METHODS: set[ContraceptiveMethod] = {
     ContraceptiveMethod.PATCH,
 }
 
+# Days of backup contraception needed until a freshly started method is reliably
+# effective (when it wasn't started seamlessly). Combined methods take ~7 days;
+# the progestogen-only pill takes ~2.
+LEAD_TIME_DAYS: dict[ContraceptiveMethod, int] = {
+    ContraceptiveMethod.COMBINED_PILL: 7,
+    ContraceptiveMethod.EXTENDED_CYCLE_PILL: 7,
+    ContraceptiveMethod.VAGINAL_RING: 7,
+    ContraceptiveMethod.PATCH: 7,
+    ContraceptiveMethod.PROGESTOGEN_ONLY_PILL: 2,
+}
+
+
+def _lead_time(method: ContraceptiveMethod) -> int:
+    return LEAD_TIME_DAYS.get(method, 7)
+
+
 # Human-readable method names for user-facing summaries.
 METHOD_LABELS: dict[ContraceptiveMethod, str] = {
     ContraceptiveMethod.COMBINED_PILL: "the combined pill",
@@ -128,16 +144,21 @@ def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
             notes=notes,
         )
 
-    # A gap is present. Detailed timing/overlap handling is added in later
-    # commits; for now, recommend backup conservatively.
+    # A gap is present: the new method needs time to become reliable, so back up
+    # for its lead time. The backup duration depends on the method being started.
+    backup = _lead_time(scenario.toMethod)
+    notes = notes + [
+        "Switching as your old method runs out (no gap) avoids needing backup."
+    ]
     return GuidanceResult(
         riskLevel=RiskLevel.MODERATE,
         takePillNow=False,
         useBackup=True,
-        backupDays=7,
+        backupDays=backup,
         summary=(
-            f"There was a gap before starting {to}. Start {to} now and use "
-            "backup contraception for the next 7 days to be safe."
+            f"There was a {scenario.gapDays}-day gap before starting {to}. "
+            f"Start {to} now and use backup contraception for the next "
+            f"{backup} days, until {to} is reliably effective."
         ),
         notes=notes,
     )
