@@ -4,7 +4,7 @@
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
-import { googleButton, escapeHtml } from "../util.js";
+import { escapeHtml } from "../util.js";
 import { toast } from "../toast.js";
 
 export const ProfileView = {
@@ -31,7 +31,8 @@ export const ProfileView = {
                 no data selling, ever.
               </p>
             </div>
-            ${googleButton("profile-google")}
+            <div id="profile-google" class="gsi-container"
+                 style="display:flex;justify-content:center"></div>
           </div>
 
           <p class="subtle" style="text-align:center">
@@ -39,9 +40,14 @@ export const ProfileView = {
           </p>
         `,
         onMount(el) {
-          el.querySelector("#profile-google").addEventListener("click", async () => {
-            const res = await api.signInWithGoogle();
-            if (!res.ok) toast(res.reason || "Sign-in is coming soon.");
+          const container = el.querySelector("#profile-google");
+          api.signInWithGoogle(container).then((res) => {
+            if (res.ok && res.user) {
+              state.setUser(res.user);
+              router.go("/profile");
+            } else if (res.reason) {
+              toast(res.reason);
+            }
           });
         },
       };

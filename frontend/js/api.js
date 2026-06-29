@@ -83,27 +83,45 @@ function loadGsi() {
   return gsiScriptPromise;
 }
 
-/** Prompt the user with Google sign-in and resolve with the ID token (JWT). */
-async function getGoogleCredential() {
+// We use GIS's official rendered button (google.accounts.id.renderButton)
+// instead of One Tap. The button is far more robust: it always displays, has
+// no FedCM dependency, no 24h cooldown after a dismissal, and works in
+// incognito. The trade-off is that we cannot trigger sign-in programmatically;
+// the user must click the GIS-rendered button itself.
+
+let gsiInitialized = false;
+let pendingCredentialResolve = null;
+
+/** Initialise GIS once with a callback that hands ID tokens to whichever
+ *  caller is currently waiting (see mountGoogleSignInButton). */
+async function ensureGsiInitialized() {
   await loadGsi();
-  return new Promise((resolve, reject) => {
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (response) => {
-        if (response && response.credential) resolve(response.credential);
-        else reject(new Error("Google sign-in was cancelled."));
-      },
-    });
-    window.google.accounts.id.prompt((notification) => {
-      // If the One Tap prompt can't be shown or the user dismisses it, reject.
-      // (Harmless if it fires after `callback` already resolved.)
-      if (
-        notification.isNotDisplayed() ||
-        notification.isSkippedMoment() ||
-        notification.isDismissedMoment()
-      ) {
-        reject(new Error("Google sign-in didn't complete. Please try again."));
-      }
+  if (gsiInitialized) return;
+  window.google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: (response) => {
+      const resolve = pendingCredentialResolve;
+      pendingCredentialResolve = null;
+      if (resolve && response && response.credential) resolve(response.credential);
+    },
+  });
+  gsiInitialized = true;
+}
+
+/** Render the Sign in with Google button into `containerEl` and return a
+ *  promise that resolves with the ID token (JWT) once the user clicks it. */
+async function mountGoogleSignInButton(containerEl) {
+  await ensureGsiInitialized();
+  return new Promise((resolve) => {
+    pendingCredentialResolve = resolve;
+    window.google.accounts.id.renderButton(containerEl, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      shape: "rectangular",
+      logo_alignment: "left",
+      width: Math.max(240, containerEl.offsetWidth || 320),
     });
   });
 }
@@ -239,16 +257,16 @@ export const api = {
 
   /**
    * Google sign-in.
-   * Prompts Google Identity Services for an ID token, then verifies it with
-   * the backend (POST /api/auth/google { credential }) which returns the
-   * authenticated user profile. The caller stores the returned user as the
-   * session. Returns { ok, user } on success or { ok:false, reason } so the
-   * views can show a toast.
+   * Mounts the official Google sign-in button into `containerEl`. When the
+   * user clicks it, the resulting ID token is sent to the backend
+   * (POST /api/auth/google) which verifies it and returns the user profile.
+   * Returns { ok, user } on success or { ok:false, reason } on failure, so
+   * the view can show a toast.
    */
-  async signInWithGoogle() {
+  async signInWithGoogle(containerEl) {
     let credential;
     try {
-      credential = await getGoogleCredential();
+      credential = await mountGoogleSignInButton(containerEl);
     } catch (err) {
       return { ok: false, reason: err.message };
     }

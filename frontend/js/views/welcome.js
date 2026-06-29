@@ -3,7 +3,7 @@
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
-import { googleButton, isDevHost } from "../util.js";
+import { isDevHost } from "../util.js";
 import { toast } from "../toast.js";
 
 const TRUST = [
@@ -46,7 +46,8 @@ export const WelcomeView = {
           </p>
 
           <div class="stack" style="margin-top:var(--space-2)">
-            ${googleButton("welcome-google", "Sign in with Google to continue")}
+            <div id="welcome-google" class="gsi-container"
+                 style="display:flex;justify-content:center"></div>
             <button id="welcome-learn" class="btn btn--secondary btn--block">
               Learn how SafeCycle works
             </button>
@@ -86,17 +87,17 @@ export const WelcomeView = {
           });
         }
 
-        const googleBtn = el.querySelector("#welcome-google");
-        googleBtn.addEventListener("click", async () => {
-          googleBtn.disabled = true;
-          const res = await api.signInWithGoogle();
+        // Mount the official Google sign-in button. The promise resolves when
+        // the user actually clicks it and Google returns an ID token; until
+        // then this just awaits silently in the background.
+        const googleContainer = el.querySelector("#welcome-google");
+        api.signInWithGoogle(googleContainer).then((res) => {
           if (res.ok && res.user) {
             state.setUser(res.user);
             state.reset();
             router.go("/dashboard");
-          } else {
-            googleBtn.disabled = false;
-            toast(res.reason || "Sign-in is coming soon.");
+          } else if (res.reason) {
+            toast(res.reason);
           }
         });
       },
