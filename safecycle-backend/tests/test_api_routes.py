@@ -125,3 +125,63 @@ def test_safety_filter_no_flags_for_minor_lapse():
     body = response.json()
     assert body["urgent"] is False
     assert body["triggers"] == []
+
+
+# --------------------------------------------------------------------------- #
+# /api/ask-question
+# --------------------------------------------------------------------------- #
+def _ask(intent="I missed a pill", **ctx) -> dict:
+    """An AskQuestionRequest body with an empty-ish context, overridable."""
+    context = {
+        "product": None,
+        "cycleWeek": None,
+        "pillsMissed": None,
+        "hoursLate": None,
+        "confidence": 0.5,
+        "clarifyingQuestion": None,
+    }
+    context.update(ctx)
+    return {"userIntent": intent, "existingContext": context}
+
+
+def test_ask_question_asks_for_product_first():
+    response = client.post("/api/ask-question", json=_ask())
+    assert response.status_code == 200
+    body = response.json()
+    assert body["fieldToFill"] == "product"
+    assert body["questionNumber"] == 1
+    assert "pill" in body["question"].lower()
+
+
+def test_ask_question_asks_for_week_when_product_known():
+    response = client.post("/api/ask-question", json=_ask(product="yasmin"))
+    body = response.json()
+    assert body["fieldToFill"] == "cycleWeek"
+    assert body["questionNumber"] == 2
+
+
+def test_ask_question_asks_for_missed_when_product_and_week_known():
+    response = client.post("/api/ask-question", json=_ask(product="yasmin", cycleWeek=2))
+    body = response.json()
+    assert body["fieldToFill"] == "pillsMissed"
+    assert body["questionNumber"] == 3
+
+
+def test_ask_question_complete_returns_no_question():
+    response = client.post(
+        "/api/ask-question",
+        json=_ask(product="yasmin", cycleWeek=2, pillsMissed=1),
+    )
+    body = response.json()
+    assert body["question"] is None
+    assert body["fieldToFill"] is None
+    assert body["questionNumber"] == 4
+
+
+def test_ask_question_hours_late_satisfies_missed_step():
+    # hoursLate alone is enough to consider the lapse known.
+    response = client.post(
+        "/api/ask-question",
+        json=_ask(product="yasmin", cycleWeek=2, hoursLate=30),
+    )
+    assert response.json()["question"] is None

@@ -191,3 +191,40 @@ class SafetyFilterResult(BaseModel):
         ...,
         description="User-facing guidance: what to do next given the triggers.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# Question Generator role — request/response
+# --------------------------------------------------------------------------- #
+class AskQuestionRequest(BaseModel):
+    """A request for the next clarifying question to ask the user."""
+
+    userIntent: str = Field(
+        ...,
+        min_length=1,
+        description="What the user is trying to do, in their own words.",
+    )
+    existingContext: ParsedScenario = Field(
+        ...,
+        description="What we already know — the (possibly incomplete) scenario.",
+    )
+
+
+class QuestionResult(BaseModel):
+    """The next question to ask, or a signal that enough is known."""
+
+    question: Optional[str] = Field(
+        None,
+        description="The next clarifying question, or null when nothing more is "
+        "needed to run the guidance engine.",
+    )
+    fieldToFill: Optional[str] = Field(
+        None,
+        description="The ParsedScenario field this question aims to fill, or null "
+        "when complete.",
+    )
+    questionNumber: int = Field(
+        ...,
+        ge=1,
+        description="1-based position of this question in the intake flow.",
+    )

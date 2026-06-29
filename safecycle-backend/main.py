@@ -20,13 +20,15 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
-from ai import answer_phraser, safety_filter
+from ai import answer_phraser, question_generator, safety_filter
 from logic import engine
 from models import (
+    AskQuestionRequest,
     GuidanceResponse,
     ParsedScenario,
     ParseInputRequest,
     PillScenario,
+    QuestionResult,
     SafetyFilterResult,
 )
 
@@ -150,6 +152,15 @@ def guidance(parsed: ParsedScenario) -> GuidanceResponse:
 def safety_filter_endpoint(parsed: ParsedScenario) -> SafetyFilterResult:
     """Screen a parsed scenario for urgent red flags (deterministic, no LLM)."""
     return safety_filter.screen(parsed)
+
+
+# --------------------------------------------------------------------------- #
+# Question Generator role — endpoint
+# --------------------------------------------------------------------------- #
+@app.post("/api/ask-question", response_model=QuestionResult)
+def ask_question(req: AskQuestionRequest) -> QuestionResult:
+    """Return the next clarifying question for an in-progress scenario."""
+    return question_generator.generate(req)
 
 
 if __name__ == "__main__":
