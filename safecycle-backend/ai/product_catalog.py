@@ -12,10 +12,10 @@ from __future__ import annotations
 
 from models import PillType
 
-# Minimal seed catalog: product name (lowercase) -> pill family.
+# Seed catalog: product name (lowercase) -> pill family.
 CATALOG: dict[str, PillType] = {
-    "yasmin": PillType.COMBINED,
-    "yaz": PillType.COMBINED,
+    "yasmin": PillType.COMBINED,  # combined, 21 active + 7 inactive
+    "yaz": PillType.COMBINED,  # combined, 24 active + 4 inactive
     "cerazette": PillType.PROGESTOGEN_ONLY,
 }
 
