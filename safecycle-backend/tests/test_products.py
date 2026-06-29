@@ -120,3 +120,30 @@ def test_seasonique_two_missed_with_unprotected_sex_is_high_risk():
     result = evaluate(_scenario("seasonique", pillsMissed=2, unprotectedSex=True))
     assert result.riskLevel is RiskLevel.HIGH
     assert result.considerEmergencyContraception is True
+
+
+# --------------------------------------------------------------------------- #
+# NuvaRing — vaginal ring
+# --------------------------------------------------------------------------- #
+def test_nuvaring_is_ring_and_supported():
+    assert product_catalog.pill_type("nuvaring") is PillType.RING
+    assert product_catalog.is_supported("nuvaring") is True
+
+
+def test_nuvaring_out_under_48h_is_protected():
+    result = evaluate(_scenario("nuvaring", pillsMissed=0, hoursLate=12))
+    assert result.riskLevel is RiskLevel.NONE
+    assert result.useBackup is False
+
+
+def test_nuvaring_out_48h_or_more_needs_backup():
+    result = evaluate(_scenario("nuvaring", pillsMissed=0, hoursLate=50))
+    assert result.riskLevel is RiskLevel.MODERATE
+    assert result.useBackup is True
+    assert result.backupDays == 7
+
+
+def test_nuvaring_out_long_with_unprotected_sex_is_high_risk():
+    result = evaluate(_scenario("nuvaring", pillsMissed=0, hoursLate=72, unprotectedSex=True))
+    assert result.riskLevel is RiskLevel.HIGH
+    assert result.considerEmergencyContraception is True

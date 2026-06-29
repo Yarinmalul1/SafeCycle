@@ -32,6 +32,8 @@ BACKUP_DAYS = 7
 # Backup duration after a missed progestogen-only pill (shorter — POPs become
 # reliable again faster).
 POP_BACKUP_DAYS = 2
+# A vaginal ring left out (or overdue) beyond this many hours loses protection.
+RING_OUT_THRESHOLD_HOURS = 48
 
 
 def evaluate(scenario: PillScenario) -> GuidanceResult:
@@ -47,6 +49,8 @@ def evaluate(scenario: PillScenario) -> GuidanceResult:
         return _evaluate_pop(scenario, pop_window_hours(scenario.product))
     if ptype is PillType.EXTENDED_CYCLE:
         return _evaluate_extended(scenario)
+    if ptype is PillType.RING:
+        return _evaluate_ring(scenario)
 
     return GuidanceResult(
         riskLevel=RiskLevel.MODERATE,
@@ -173,6 +177,43 @@ def _evaluate_extended(scenario: PillScenario) -> GuidanceResult:
             "Extended-cycle pills are taken continuously (~84 active days) before "
             "a scheduled break."
         ],
+    )
+
+
+def _evaluate_ring(scenario: PillScenario) -> GuidanceResult:
+    """Rules for the vaginal ring (e.g. NuvaRing).
+
+    For the ring, ``hoursLate`` is how long it has been out of place or overdue.
+    Out for under 48 hours: reinsert and protection continues. Out for 48 hours
+    or more: reinsert, use backup for 7 days, and consider emergency
+    contraception if there was unprotected sex.
+    """
+    hours_out = scenario.hoursLate or 0
+
+    if hours_out < RING_OUT_THRESHOLD_HOURS:
+        return GuidanceResult(
+            riskLevel=RiskLevel.NONE,
+            takePillNow=True,
+            summary=(
+                "Your ring has been out for less than 48 hours. Reinsert it now "
+                "(or insert a new one) — you're still protected."
+            ),
+            notes=["Here, 'take now' means reinsert your ring."],
+        )
+
+    return GuidanceResult(
+        riskLevel=RiskLevel.HIGH if scenario.unprotectedSex else RiskLevel.MODERATE,
+        takePillNow=True,
+        useBackup=True,
+        backupDays=BACKUP_DAYS,
+        considerEmergencyContraception=scenario.unprotectedSex,
+        summary=(
+            "Your ring has been out for 48 hours or more, so protection may have "
+            "dropped. Reinsert a ring now and use backup contraception for the "
+            "next 7 days. Consider emergency contraception if you had unprotected "
+            "sex in the last few days."
+        ),
+        notes=["Here, 'take now' means reinsert your ring."],
     )
 
 

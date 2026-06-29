@@ -19,13 +19,15 @@ CATALOG: dict[str, PillType] = {
     "cerazette": PillType.PROGESTOGEN_ONLY,  # desogestrel, 12h window
     "micronor": PillType.PROGESTOGEN_ONLY,  # norethisterone, 3h window
     "seasonique": PillType.EXTENDED_CYCLE,  # 84 active + 7 low-dose
+    "nuvaring": PillType.RING,  # vaginal ring, 3 weeks in / 1 week out
 }
 
-# Pill families the logic engine currently has a rule set for.
+# Product families the logic engine currently has a rule set for.
 SUPPORTED_TYPES: set[PillType] = {
     PillType.COMBINED,
     PillType.PROGESTOGEN_ONLY,
     PillType.EXTENDED_CYCLE,
+    PillType.RING,
 }
 
 # Progestogen-only pills must be taken within a per-product window (in hours).

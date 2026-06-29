@@ -31,6 +31,7 @@ class PillType(str, Enum):
     COMBINED = "combined"  # combined oral contraceptive (estrogen + progestogen)
     PROGESTOGEN_ONLY = "progestogen_only"  # mini-pill
     EXTENDED_CYCLE = "extended_cycle"  # combined pill taken in long (e.g. 84-day) cycles
+    RING = "ring"  # vaginal ring (not a pill, but shares the catalog/engine)
     UNKNOWN = "unknown"
 
 
