@@ -113,3 +113,32 @@ def test_gap_switch_to_pop_needs_only_2_days_backup():
 def test_gap_summary_mentions_the_gap_length():
     result = evaluate_switch(_switch(M.COMBINED_PILL, M.VAGINAL_RING, gapDays=5))
     assert "5-day gap" in result.summary
+
+
+# --------------------------------------------------------------------------- #
+# Overlap safety: unprotected sex during the gap -> EC
+# --------------------------------------------------------------------------- #
+def test_gap_with_unprotected_sex_is_high_risk_with_ec():
+    result = evaluate_switch(
+        _switch(M.COMBINED_PILL, M.VAGINAL_RING, gapDays=3, unprotectedSex=True)
+    )
+    assert result.riskLevel is RiskLevel.HIGH
+    assert result.considerEmergencyContraception is True
+    assert "emergency contraception" in result.summary.lower()
+
+
+def test_gap_without_unprotected_sex_is_not_high_risk():
+    result = evaluate_switch(
+        _switch(M.COMBINED_PILL, M.VAGINAL_RING, gapDays=3, unprotectedSex=False)
+    )
+    assert result.riskLevel is RiskLevel.MODERATE
+    assert result.considerEmergencyContraception is False
+
+
+def test_seamless_switch_with_unprotected_sex_stays_protected():
+    # No gap means protection never lapsed, so EC is not indicated.
+    result = evaluate_switch(
+        _switch(M.COMBINED_PILL, M.VAGINAL_RING, gapDays=0, unprotectedSex=True)
+    )
+    assert result.riskLevel is RiskLevel.NONE
+    assert result.considerEmergencyContraception is False

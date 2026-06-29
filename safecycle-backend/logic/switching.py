@@ -150,15 +150,39 @@ def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
     notes = notes + [
         "Switching as your old method runs out (no gap) avoids needing backup."
     ]
+
+    summary = (
+        f"There was a {scenario.gapDays}-day gap before starting {to}. "
+        f"Start {to} now and use backup contraception for the next "
+        f"{backup} days, until {to} is reliably effective."
+    )
+
+    # Unprotected sex during the gap is the real pregnancy risk: protection had
+    # lapsed, so emergency contraception should be considered.
+    if scenario.unprotectedSex:
+        notes.append(
+            "Backup (e.g. condoms) only prevents new risk — it does not undo "
+            "unprotected sex that already happened during the gap."
+        )
+        return GuidanceResult(
+            riskLevel=RiskLevel.HIGH,
+            takePillNow=False,
+            useBackup=True,
+            backupDays=backup,
+            considerEmergencyContraception=True,
+            summary=(
+                summary
+                + " Because you had unprotected sex during the gap, consider "
+                "emergency contraception as soon as possible."
+            ),
+            notes=notes,
+        )
+
     return GuidanceResult(
         riskLevel=RiskLevel.MODERATE,
         takePillNow=False,
         useBackup=True,
         backupDays=backup,
-        summary=(
-            f"There was a {scenario.gapDays}-day gap before starting {to}. "
-            f"Start {to} now and use backup contraception for the next "
-            f"{backup} days, until {to} is reliably effective."
-        ),
+        summary=summary,
         notes=notes,
     )
