@@ -68,3 +68,28 @@ def test_cerazette_missed_with_unprotected_sex_is_high_risk():
     result = evaluate(_scenario("cerazette", pillsMissed=1, unprotectedSex=True))
     assert result.riskLevel is RiskLevel.HIGH
     assert result.considerEmergencyContraception is True
+
+
+# --------------------------------------------------------------------------- #
+# Micronor — progestogen-only pill (norethisterone, 3-hour window)
+# --------------------------------------------------------------------------- #
+def test_micronor_is_pop_with_default_3h_window():
+    assert product_catalog.pill_type("micronor") is PillType.PROGESTOGEN_ONLY
+    assert product_catalog.pop_window_hours("micronor") == 3
+
+
+def test_micronor_within_3h_window_is_protected():
+    result = evaluate(_scenario("micronor", pillsMissed=0, hoursLate=2))
+    assert result.riskLevel is RiskLevel.NONE
+    assert result.useBackup is False
+
+
+def test_micronor_stricter_than_cerazette_at_same_delay():
+    # A 5-hour delay is fine for Cerazette (12h) but a miss for Micronor (3h).
+    delay = 5
+    cerazette = evaluate(_scenario("cerazette", pillsMissed=0, hoursLate=delay))
+    micronor = evaluate(_scenario("micronor", pillsMissed=0, hoursLate=delay))
+    assert cerazette.riskLevel is RiskLevel.NONE
+    assert micronor.riskLevel is RiskLevel.MODERATE
+    assert micronor.useBackup is True
+    assert micronor.backupDays == 2

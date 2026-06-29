@@ -16,7 +16,8 @@ from models import PillType
 CATALOG: dict[str, PillType] = {
     "yasmin": PillType.COMBINED,  # combined, 21 active + 7 inactive
     "yaz": PillType.COMBINED,  # combined, 24 active + 4 inactive
-    "cerazette": PillType.PROGESTOGEN_ONLY,
+    "cerazette": PillType.PROGESTOGEN_ONLY,  # desogestrel, 12h window
+    "micronor": PillType.PROGESTOGEN_ONLY,  # norethisterone, 3h window
 }
 
 # Pill families the logic engine currently has a rule set for.
