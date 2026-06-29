@@ -281,6 +281,49 @@ def test_history_is_scoped_per_user():
 
 
 # --------------------------------------------------------------------------- #
+# /api/switch-guidance
+# --------------------------------------------------------------------------- #
+def test_switch_guidance_seamless_is_protected_and_phrased():
+    response = client.post(
+        "/api/switch-guidance",
+        json={
+            "fromMethod": "combined_pill",
+            "toMethod": "vaginal_ring",
+            "gapDays": 0,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["guidance"]["riskLevel"] == "none"
+    assert body["guidance"]["useBackup"] is False
+    assert body["message"].startswith("PHRASED:")
+
+
+def test_switch_guidance_gap_with_unprotected_sex_is_high_risk():
+    response = client.post(
+        "/api/switch-guidance",
+        json={
+            "fromMethod": "progestogen_only_pill",
+            "toMethod": "combined_pill",
+            "gapDays": 4,
+            "unprotectedSex": True,
+        },
+    )
+    assert response.status_code == 200
+    guidance = response.json()["guidance"]
+    assert guidance["riskLevel"] == "high"
+    assert guidance["considerEmergencyContraception"] is True
+
+
+def test_switch_guidance_rejects_unknown_method():
+    response = client.post(
+        "/api/switch-guidance",
+        json={"fromMethod": "telepathy", "toMethod": "combined_pill"},
+    )
+    assert response.status_code == 422
+
+
+# --------------------------------------------------------------------------- #
 # /api/auth/google
 # --------------------------------------------------------------------------- #
 def _fake_id_token(claims: dict) -> str:

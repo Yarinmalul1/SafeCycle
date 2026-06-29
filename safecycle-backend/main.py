@@ -32,13 +32,14 @@ from ai import (
     safety_filter,
 )
 from db import queries
-from logic import engine
+from logic import engine, switching
 from models import (
     AskQuestionRequest,
     AuthUser,
     GoogleAuthRequest,
     GuidanceResponse,
     HistorySession,
+    MethodSwitchScenario,
     ParsedScenario,
     ParseInputRequest,
     PillScenario,
@@ -174,6 +175,21 @@ def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceRespon
     result = engine.evaluate(scenario)
     message = answer_phraser.phrase(result, client=client)
     history_manager.record(user_id, scenario, result, message)
+    return GuidanceResponse(guidance=result, message=message)
+
+
+# --------------------------------------------------------------------------- #
+# Method-switching guidance — endpoint
+# --------------------------------------------------------------------------- #
+@app.post("/api/switch-guidance", response_model=GuidanceResponse)
+def switch_guidance(scenario: MethodSwitchScenario) -> GuidanceResponse:
+    """Guide a user through switching from one contraceptive method to another.
+
+    Runs the deterministic switching engine and phrases the result. No history
+    is recorded — switching is advisory and not tied to a dated pill event.
+    """
+    result = switching.evaluate_switch(scenario)
+    message = answer_phraser.phrase(result, client=client)
     return GuidanceResponse(guidance=result, message=message)
 
 
