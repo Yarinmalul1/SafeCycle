@@ -102,6 +102,37 @@ def _stub_google_verify(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _stub_supabase_users(monkeypatch):
+    """Replace db.users.find_or_create with an in-memory dict-backed stub.
+
+    Keeps the find-or-create semantics (same google_id -> same row) so the
+    'no duplicates on repeat sign-in' test is meaningful, without touching
+    Supabase. Tests that need to assert on stored state can read from the
+    closed-over `store` via the helper functions.
+    """
+    store: dict[str, dict] = {}
+    counter = {"n": 0}
+
+    def find_or_create(google_id: str, email: str) -> dict:
+        if google_id in store:
+            # Mimic upsert: update the email if it changed.
+            store[google_id]["email"] = email
+            return store[google_id]
+        counter["n"] += 1
+        row = {
+            "id": f"uuid-{counter['n']}",
+            "google_id": google_id,
+            "email": email,
+            "created_at": "2026-06-29T19:00:00Z",
+        }
+        store[google_id] = row
+        return row
+
+    monkeypatch.setattr("main.users.find_or_create", find_or_create)
+    yield store
+
+
+@pytest.fixture(autouse=True)
 def _reset_history():
     """Each test starts with an empty in-memory history store."""
     from db import queries
@@ -464,19 +495,58 @@ def _fake_id_token(claims: dict) -> str:
     return f"{seg({'alg': 'none'})}.{seg(claims)}.signature"
 
 
-def test_auth_google_returns_profile_and_stores_session():
-    from db import queries
-
+def test_auth_google_returns_profile_and_persists_user():
+    # First sign-in: upserts into Supabase (stubbed) and returns the row's id.
     token = _fake_id_token(
-        {"sub": "1234567890", "email": "sarah@example.com", "name": "Sarah Levi"}
+        {
+            "sub": "1234567890",
+            "email": "sarah@example.com",
+            "name": "Sarah Levi",
+            "email_verified": True,
+        }
     )
     response = client.post("/api/auth/google", json={"credential": token})
 
     assert response.status_code == 200
     body = response.json()
-    assert body == {"name": "Sarah Levi", "email": "sarah@example.com", "userId": "1234567890"}
-    # The session is stored in memory under the stable user id.
-    assert queries.get_user("1234567890") == body
+    assert body["name"] == "Sarah Levi"
+    assert body["email"] == "sarah@example.com"
+    # userId is the Supabase uuid, not the Google sub.
+    assert body["userId"].startswith("uuid-")
+
+
+def test_auth_google_signing_in_twice_does_not_create_a_duplicate(_stub_supabase_users):
+    # The same google_id signing in twice must resolve to the same Supabase row.
+    token = _fake_id_token(
+        {
+            "sub": "same-user-42",
+            "email": "rachel@example.com",
+            "name": "Rachel",
+            "email_verified": True,
+        }
+    )
+    first = client.post("/api/auth/google", json={"credential": token})
+    second = client.post("/api/auth/google", json={"credential": token})
+
+    assert first.status_code == 200 and second.status_code == 200
+    assert first.json()["userId"] == second.json()["userId"]
+    # Only one row in the stubbed Supabase store for this google_id.
+    assert len(_stub_supabase_users) == 1
+
+
+def test_auth_google_returns_503_when_supabase_unreachable(monkeypatch):
+    # If the user store raises (e.g. network error), the endpoint surfaces a
+    # 503 rather than leaking a 500 or hanging.
+    def boom(google_id, email):
+        raise RuntimeError("supabase is down")
+
+    monkeypatch.setattr("main.users.find_or_create", boom)
+
+    token = _fake_id_token(
+        {"sub": "x", "email": "x@example.com", "name": "X", "email_verified": True}
+    )
+    response = client.post("/api/auth/google", json={"credential": token})
+    assert response.status_code == 503
 
 
 def test_auth_google_rejects_malformed_credential():

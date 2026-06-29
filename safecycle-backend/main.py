@@ -32,7 +32,7 @@ from ai import (
     safety_filter,
 )
 from ai.product_catalog import pill_type
-from db import queries
+from db import queries, users
 from logic import engine, switching
 from models import (
     AskQuestionRequest,
@@ -287,12 +287,20 @@ def auth_google(req: GoogleAuthRequest) -> AuthUser:
         raise HTTPException(status_code=401, detail="Google email is not verified.")
 
     # `sub` is Google's stable per-user id; fall back to the email if absent.
-    user_id = claims.get("sub") or email
+    google_id = claims.get("sub") or email
     name = claims.get("name") or email.split("@")[0]
 
-    user = AuthUser(name=name, email=email, userId=user_id)
-    queries.save_user(user_id, user.model_dump())
-    return user
+    # Upsert into Supabase so concurrent sign-ins never produce duplicates.
+    # The returned userId is the Supabase row id (uuid), not the Google sub.
+    try:
+        row = users.find_or_create(google_id=google_id, email=email)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Could not reach the user store. Please try again.",
+        ) from exc
+
+    return AuthUser(name=name, email=email, userId=row["id"])
 
 
 if __name__ == "__main__":
