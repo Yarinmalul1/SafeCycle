@@ -96,3 +96,32 @@ def test_guidance_invalid_cycle_week_returns_422():
     # cycleWeek out of the engine's 1-4 range -> validation error.
     response = client.post("/api/guidance", json=_parsed(cycleWeek=9))
     assert response.status_code == 422
+
+
+# --------------------------------------------------------------------------- #
+# /api/safety-filter
+# --------------------------------------------------------------------------- #
+def test_safety_filter_flags_week1_multiple_missed_as_urgent():
+    response = client.post("/api/safety-filter", json=_parsed(pillsMissed=2, cycleWeek=1))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["urgent"] is True
+    assert len(body["triggers"]) >= 1
+    assert "emergency" in body["message"].lower()
+
+
+def test_safety_filter_flags_three_or_more_missed_any_week():
+    response = client.post("/api/safety-filter", json=_parsed(pillsMissed=3, cycleWeek=2))
+    assert response.json()["urgent"] is True
+
+
+def test_safety_filter_flags_very_late_pill():
+    response = client.post("/api/safety-filter", json=_parsed(pillsMissed=0, hoursLate=80))
+    assert response.json()["urgent"] is True
+
+
+def test_safety_filter_no_flags_for_minor_lapse():
+    response = client.post("/api/safety-filter", json=_parsed(pillsMissed=1, cycleWeek=2))
+    body = response.json()
+    assert body["urgent"] is False
+    assert body["triggers"] == []

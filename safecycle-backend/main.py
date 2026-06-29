@@ -20,13 +20,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
-from ai import answer_phraser
+from ai import answer_phraser, safety_filter
 from logic import engine
 from models import (
     GuidanceResponse,
     ParsedScenario,
     ParseInputRequest,
     PillScenario,
+    SafetyFilterResult,
 )
 
 load_dotenv()
@@ -140,6 +141,15 @@ def guidance(parsed: ParsedScenario) -> GuidanceResponse:
     result = engine.evaluate(scenario)
     message = answer_phraser.phrase(result, client=client)
     return GuidanceResponse(guidance=result, message=message)
+
+
+# --------------------------------------------------------------------------- #
+# Safety Filter role — endpoint
+# --------------------------------------------------------------------------- #
+@app.post("/api/safety-filter", response_model=SafetyFilterResult)
+def safety_filter_endpoint(parsed: ParsedScenario) -> SafetyFilterResult:
+    """Screen a parsed scenario for urgent red flags (deterministic, no LLM)."""
+    return safety_filter.screen(parsed)
 
 
 if __name__ == "__main__":

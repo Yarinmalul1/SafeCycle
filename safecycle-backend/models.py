@@ -169,3 +169,25 @@ class GuidanceResponse(BaseModel):
         ...,
         description="Warm, plain-language phrasing of the guidance for the user.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# Safety Filter role — response
+# --------------------------------------------------------------------------- #
+class SafetyFilterResult(BaseModel):
+    """Result of screening a scenario for urgent / red-flag cases."""
+
+    urgent: bool = Field(
+        ...,
+        description="True when the scenario warrants prompt medical attention or "
+        "emergency contraception.",
+    )
+    triggers: list[str] = Field(
+        default_factory=list,
+        description="Human-readable reasons the scenario was flagged. Empty when "
+        "nothing urgent was detected.",
+    )
+    message: str = Field(
+        ...,
+        description="User-facing guidance: what to do next given the triggers.",
+    )
