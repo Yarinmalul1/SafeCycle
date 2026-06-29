@@ -53,6 +53,63 @@ async function request(path, options) {
   return body;
 }
 
+// --------------------------------------------------------------------------- #
+// Google Identity Services (GIS) sign-in
+// --------------------------------------------------------------------------- #
+// TODO: replace with the real Google OAuth Client ID for this project.
+const GOOGLE_CLIENT_ID =
+  (typeof window !== "undefined" && window.SAFECYCLE_GOOGLE_CLIENT_ID) ||
+  "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+const GSI_SRC = "https://accounts.google.com/gsi/client";
+
+let gsiScriptPromise = null;
+
+/** Lazy-load the Google Identity Services client, once. */
+function loadGsi() {
+  if (gsiScriptPromise) return gsiScriptPromise;
+  gsiScriptPromise = new Promise((resolve, reject) => {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      return resolve();
+    }
+    const s = document.createElement("script");
+    s.src = GSI_SRC;
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => {
+      gsiScriptPromise = null; // allow a later retry
+      reject(new Error("Couldn't load Google sign-in. Check your connection and try again."));
+    };
+    document.head.appendChild(s);
+  });
+  return gsiScriptPromise;
+}
+
+/** Prompt the user with Google sign-in and resolve with the ID token (JWT). */
+async function getGoogleCredential() {
+  await loadGsi();
+  return new Promise((resolve, reject) => {
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: (response) => {
+        if (response && response.credential) resolve(response.credential);
+        else reject(new Error("Google sign-in was cancelled."));
+      },
+    });
+    window.google.accounts.id.prompt((notification) => {
+      // If the One Tap prompt can't be shown or the user dismisses it, reject.
+      // (Harmless if it fires after `callback` already resolved.)
+      if (
+        notification.isNotDisplayed() ||
+        notification.isSkippedMoment() ||
+        notification.isDismissedMoment()
+      ) {
+        reject(new Error("Google sign-in didn't complete. Please try again."));
+      }
+    });
+  });
+}
+
 export const api = {
   /**
    * Input parser (Claude, via the backend).
@@ -161,15 +218,30 @@ export const api = {
     return { ok: true, _stub: true };
   },
 
-  /** STUB - Google OAuth via Supabase.
-   * Real version: Supabase Google OAuth → returns the authed profile.
-   * For the demo we return a mock signed-in user so the gated flow works. */
+  /**
+   * Google sign-in.
+   * Prompts Google Identity Services for an ID token, then verifies it with
+   * the backend (POST /api/auth/google { credential }) which returns the
+   * authenticated user profile. The caller stores the returned user as the
+   * session. Returns { ok, user } on success or { ok:false, reason } so the
+   * views can show a toast.
+   */
   async signInWithGoogle() {
-    await delay(FAKE_LATENCY);
-    return {
-      ok: true,
-      _stub: true,
-      user: { name: "Sarah Levi", email: "sarah@example.com" },
-    };
+    let credential;
+    try {
+      credential = await getGoogleCredential();
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+    try {
+      const body = await request("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      return { ok: true, user: body.user || body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
   },
 };
