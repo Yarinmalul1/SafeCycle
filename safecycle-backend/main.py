@@ -18,6 +18,7 @@ import os
 import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
 from ai import (
@@ -52,6 +53,14 @@ app = FastAPI(
     title="SafeCycle API",
     description="Contraception guidance, made clear.",
     version="0.1.0",
+)
+
+# Allow the static frontend dev server (serve.js on :5500) to call the API.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5500"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # A single client is created once and reused. It reads ANTHROPIC_API_KEY from
