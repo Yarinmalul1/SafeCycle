@@ -139,12 +139,6 @@ export const ResultView = {
         const body = el.querySelector("#result-body");
         body.hidden = false;
         body.innerHTML = `
-          ${
-            result._stub
-              ? `<span class="stub-badge" title="Placeholder logic"><span class="material-symbols-outlined" aria-hidden="true">science</span> Demo guidance - not clinically reviewed</span>`
-              : ""
-          }
-
           <div class="result-header ${meta.cls}" role="status">
             <span class="result-header__icon material-symbols-outlined is-filled" aria-hidden="true">${meta.icon}</span>
             <span class="result-header__text">
