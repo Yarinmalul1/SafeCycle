@@ -7,9 +7,27 @@
    signed-in user's id, so no separate save endpoint is needed -- the
    result screen shows a "Saved to history" confirmation link. */
 
-// Base URL of the FastAPI backend. Override at runtime by setting
-// window.SAFECYCLE_API_BASE before this module loads (e.g. in index.html).
-const API_BASE = (typeof window !== "undefined" && window.SAFECYCLE_API_BASE) || "http://localhost:8000";
+// Base URL of the FastAPI backend.
+//
+// Resolution order:
+//   1. window.SAFECYCLE_API_BASE -- runtime override, set this in index.html
+//      before api.js loads if you need a non-default backend (e.g. a PR
+//      preview pointing at a sibling staging service).
+//   2. Hostname mapping -- the deployed Railway frontend(s) map to their
+//      paired backend so the sign-in handler and every subsequent fetch hit
+//      the right public URL without rebuilding.
+//   3. localhost:8000 -- local dev fallback (matches `python main.py`).
+function defaultApiBase() {
+  if (typeof window === "undefined") return "http://localhost:8000";
+  const host = window.location.hostname;
+  if (host === "frontend-staging-staging-a212.up.railway.app") {
+    return "https://backend-staging-staging-64b6.up.railway.app";
+  }
+  return "http://localhost:8000";
+}
+
+const API_BASE =
+  (typeof window !== "undefined" && window.SAFECYCLE_API_BASE) || defaultApiBase();
 
 const FAKE_LATENCY = 450; // ms - mimic a network round-trip for realistic UI
 
