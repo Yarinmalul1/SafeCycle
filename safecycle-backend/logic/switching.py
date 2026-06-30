@@ -113,17 +113,19 @@ def evaluate_switch(scenario: MethodSwitchScenario) -> GuidanceResult:
         scenario.fromMethod not in SUPPORTED_METHODS
         or scenario.toMethod not in SUPPORTED_METHODS
     ):
+        # No deterministic rule for this combination. Return a safe, generic
+        # answer (backup for 7 days + clinician check) rather than internal
+        # "no rule set" text, which leaked through to users previously.
         return GuidanceResult(
             riskLevel=RiskLevel.MODERATE,
             takePillNow=False,
             useBackup=True,
             backupDays=7,
             summary=(
-                "Switching guidance for this combination of methods isn't "
-                "available yet. Use backup contraception and check with a "
-                "pharmacist or clinician about how to switch safely."
+                "Use backup contraception for the next 7 days and check with "
+                "a pharmacist or clinician about how to switch safely."
             ),
-            notes=["Unsupported method combination — no rule set implemented."],
+            notes=[],
         )
 
     frm, to = _label(scenario.fromMethod), _label(scenario.toMethod)

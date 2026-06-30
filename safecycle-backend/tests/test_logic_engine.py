@@ -68,9 +68,13 @@ def test_two_missed_week3_skips_placebo_break():
 
 
 def test_unsupported_product_is_conservative():
+    # Unknown products return a neutral, non-leaky result; the user-facing
+    # text is re-phrased by the Claude fallback in /api/guidance (see
+    # main.py + guidance_fallback.py), so we only assert shape here.
     result = evaluate(_scenario(product="mystery-pill", pillsMissed=2))
     assert result.riskLevel is RiskLevel.MODERATE
-    assert "isn't available" in result.summary
+    assert "isn't available" not in result.summary
+    assert "no rule set" not in " ".join(result.notes)
 
 
 @pytest.mark.parametrize("week", [1, 2, 3])

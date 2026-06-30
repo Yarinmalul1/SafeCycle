@@ -52,14 +52,15 @@ def evaluate(scenario: PillScenario) -> GuidanceResult:
     if ptype is PillType.RING:
         return _evaluate_ring(scenario)
 
+    # Unknown product: the engine has no deterministic rules, so we return a
+    # neutral, conservative result. /api/guidance detects the UNKNOWN PillType
+    # and re-phrases the user-facing copy via Claude (see guidance_fallback),
+    # so this summary is only ever surfaced if Claude is unreachable too.
     return GuidanceResult(
         riskLevel=RiskLevel.MODERATE,
         takePillNow=True,
-        summary=(
-            f"Guidance for '{normalize(scenario.product)}' isn't available yet. "
-            "Please check the product leaflet or speak to a pharmacist."
-        ),
-        notes=["Unsupported product — no rule set implemented."],
+        summary="Here's general guidance for your situation.",
+        notes=[],
     )
 
 
