@@ -2,6 +2,7 @@
    Registers routes, starts the router, installs the PWA service worker. */
 import { router } from "./router.js";
 import { WelcomeView } from "./views/welcome.js";
+import { HomeCardsView } from "./views/home_cards.js";
 import { HomeView } from "./views/home.js";
 import { MethodView } from "./views/method.js";
 import { QuestionsView } from "./views/questions.js";
@@ -26,6 +27,7 @@ const NotFoundView = {
 
 router
   .add("/", WelcomeView)
+  .add("/home", HomeCardsView)
   .add("/entry", HomeView)
   .add("/method", MethodView)
   .add("/questions", QuestionsView)

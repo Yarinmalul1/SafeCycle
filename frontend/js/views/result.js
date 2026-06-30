@@ -168,6 +168,10 @@ export const ResultView = {
             <button id="restart-btn" class="btn btn--primary btn--block">
               Start another conversation
             </button>
+            <button id="home-btn" class="btn btn--ghost btn--block">
+              <span class="material-symbols-outlined" aria-hidden="true">home</span>
+              Back to Home
+            </button>
           </div>
         `;
 
@@ -177,6 +181,10 @@ export const ResultView = {
         body.querySelector("#restart-btn").addEventListener("click", () => {
           state.reset();
           router.go("/entry");
+        });
+        body.querySelector("#home-btn").addEventListener("click", () => {
+          state.reset();
+          router.go("/home");
         });
         // Calendar export: generate the 90-day schedule for the user's method,
         // then push events to their Google Calendar. Requires sign-in.

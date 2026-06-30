@@ -92,7 +92,7 @@ export const router = {
     const navKey =
       path === "/catalog" ? "catalog" :
       path === "/profile" || path === "/calendar" ? "profile" :
-      ["/", "/entry", "/method", "/questions", "/result"].includes(path) ? "home" :
+      ["/", "/home", "/entry", "/method", "/questions", "/result"].includes(path) ? "home" :
       null;
     document.querySelectorAll(".bottom-nav__item").forEach((a) => {
       if (a.dataset.nav === navKey) a.setAttribute("aria-current", "page");
