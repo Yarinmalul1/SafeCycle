@@ -31,6 +31,35 @@
 
   <title>SafeCycle</title>
 
+  <!-- ============================================================
+       SafeCycle backend URL -- set BEFORE any JS module loads so
+       js/api.js picks it up via its window.SAFECYCLE_API_BASE
+       precedence rule instead of computing it at module-eval time.
+
+       Hardcoded per-environment because the previous runtime
+       hostname detection inside api.js was unreliable in the
+       deployed static environment (stale cache or unexpected
+       hostname) and silently fell back to localhost, which broke
+       sign-in. This inline script runs before app.js fetches
+       api.js, so even an outdated api.js still uses the right
+       backend.
+
+       Local dev (`node serve.js` on :5500) keeps localhost:8000.
+       Everything else points at the public Railway staging backend.
+       Add the production frontend hostname here once it lands.
+       ============================================================ -->
+  <script>
+    (function () {
+      var host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") {
+        window.SAFECYCLE_API_BASE = "http://localhost:8000";
+      } else {
+        window.SAFECYCLE_API_BASE =
+          "https://backend-staging-staging-64b6.up.railway.app";
+      }
+    })();
+  </script>
+
   <!-- Token layer first: this is the ONLY file to replace with Stitch tokens -->
   <link rel="stylesheet" href="./css/tokens.css" />
   <link rel="stylesheet" href="./css/base.css" />
