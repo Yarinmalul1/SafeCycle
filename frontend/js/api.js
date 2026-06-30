@@ -111,6 +111,37 @@ async function ensureGsiInitialized() {
   gsiInitialized = true;
 }
 
+// Google Calendar scope: needed for adding events. Requested via a separate
+// OAuth token-client popup (not the sign-in ID-token flow), so users can grant
+// or decline calendar access independently of signing in.
+const GCAL_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+
+/** Open the OAuth consent popup for the Calendar scope and resolve with an
+ *  access token. The token lives in memory only; it never goes to our backend. */
+async function getCalendarAccessToken() {
+  await loadGsi();
+  return new Promise((resolve, reject) => {
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GCAL_SCOPE,
+      prompt: "",
+      callback: (response) => {
+        if (response.error) reject(new Error(response.error_description || response.error));
+        else resolve(response.access_token);
+      },
+    });
+    tokenClient.requestAccessToken();
+  });
+}
+
+/** Deterministic Google Calendar event id per (userId, product, time, index).
+ *  Google requires base32hex chars (a-v, 0-9) only, 5-1024 chars long. */
+function makeEventId(userId, product, startsAt, index) {
+  const safe = (s) => String(s).toLowerCase().replace(/[^a-v0-9]/g, "");
+  const t = String(startsAt).replace(/[^0-9]/g, "");
+  return `safecycle${safe(userId)}${safe(product)}${t}${index}`.slice(0, 1024);
+}
+
 /** Render the Sign in with Google button into `containerEl` and return a
  *  promise that resolves with the ID token (JWT) once the user clicks it. */
 async function mountGoogleSignInButton(containerEl) {
@@ -296,5 +327,88 @@ export const api = {
    */
   async signInAsDemo() {
     return { ok: true, user: { name: "Test User", email: "test@example.com" } };
+  },
+
+  /**
+   * Calendar - generate and persist a contraception schedule for the user.
+   * Returns the stored row (or { ok: false, reason } on failure).
+   */
+  async generateCalendar({ userId, product, startDate, hour = 9 }) {
+    try {
+      const body = await request("/api/calendar/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          product,
+          start_date: startDate,
+          hour,
+        }),
+      });
+      return { ok: true, calendar: body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+  },
+
+  /** Trigger a browser download of the user's schedule as an .ics file. */
+  downloadCalendarIcs(userId) {
+    const url = `${API_BASE}/api/calendar/${encodeURIComponent(userId)}/ics`;
+    const a = document.createElement("a");
+    a.href = url;
+    // The Content-Disposition response header already supplies a filename;
+    // setting download here is a hint for browsers that ignore it.
+    a.download = `safecycle.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  },
+
+  /**
+   * Push events to the signed-in user's Google Calendar.
+   * Triggers a separate OAuth consent for the calendar.events scope (the
+   * sign-in flow only got `openid email profile`), then POSTs each event to
+   * the Calendar v3 API. Event ids are deterministic per (userId, product,
+   * starts_at) so re-exports are idempotent: Google returns 409 for events
+   * it already has and we count them as already-exported.
+   * Returns { ok, added, alreadyPresent, failed } or { ok:false, reason }.
+   */
+  async exportToGoogleCalendar({ userId, product, events }) {
+    let accessToken;
+    try {
+      accessToken = await getCalendarAccessToken();
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+    let added = 0,
+      alreadyPresent = 0,
+      failed = 0;
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i];
+      const id = makeEventId(userId, product, e.starts_at, i);
+      const startsAt = e.starts_at;
+      const endsAt = new Date(new Date(startsAt).getTime() + 15 * 60 * 1000).toISOString();
+      const res = await fetch(
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id,
+            summary: e.summary,
+            description: e.description,
+            start: { dateTime: startsAt, timeZone: "UTC" },
+            end: { dateTime: endsAt, timeZone: "UTC" },
+          }),
+        }
+      );
+      if (res.ok) added++;
+      else if (res.status === 409) alreadyPresent++;
+      else failed++;
+    }
+    return { ok: true, added, alreadyPresent, failed };
   },
 };

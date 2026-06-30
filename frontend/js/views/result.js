@@ -167,6 +167,10 @@ export const ResultView = {
               <span class="material-symbols-outlined" aria-hidden="true">calendar_add_on</span>
               Add to Google Calendar
             </button>
+            <button id="ics-btn" class="btn btn--secondary btn--block">
+              <span class="material-symbols-outlined" aria-hidden="true">download</span>
+              Download .ics file
+            </button>
             <button id="savetl-btn" class="btn btn--secondary btn--block">Save to timeline</button>
             <button id="clinician-btn" class="clinician-link">
               <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
@@ -188,9 +192,52 @@ export const ResultView = {
         body.querySelector("#dash-btn").addEventListener("click", () =>
           router.go("/dashboard")
         );
-        body.querySelector("#gcal-btn").addEventListener("click", () =>
-          toast("Google Calendar sync is coming soon.")
-        );
+        // Calendar export: generate the 90-day schedule for the user's method,
+        // then push events to their Google Calendar. Requires sign-in.
+        body.querySelector("#gcal-btn").addEventListener("click", async () => {
+          if (!loggedIn || !state.user?.userId) {
+            return toast("Sign in to export your schedule.");
+          }
+          const method = state.session.method || "pill";
+          const today = new Date().toISOString().slice(0, 10);
+          toast("Generating your schedule...");
+          const gen = await api.generateCalendar({
+            userId: state.user.userId,
+            product: method,
+            startDate: today,
+            hour: 9,
+          });
+          if (!gen.ok) return toast(gen.reason || "Could not generate schedule.");
+          toast(`Asking Google for calendar access (${gen.calendar.schedule_data.length} events)...`);
+          const exp = await api.exportToGoogleCalendar({
+            userId: state.user.userId,
+            product: method,
+            events: gen.calendar.schedule_data,
+          });
+          if (!exp.ok) return toast(exp.reason || "Export failed.");
+          const parts = [];
+          if (exp.added) parts.push(`${exp.added} added`);
+          if (exp.alreadyPresent) parts.push(`${exp.alreadyPresent} already in calendar`);
+          if (exp.failed) parts.push(`${exp.failed} failed`);
+          toast(`Calendar export: ${parts.join(", ") || "no events"}`);
+        });
+
+        // ICS download: lets the user import the schedule into any calendar app.
+        body.querySelector("#ics-btn").addEventListener("click", async () => {
+          if (!loggedIn || !state.user?.userId) {
+            return toast("Sign in to download your schedule.");
+          }
+          const method = state.session.method || "pill";
+          const today = new Date().toISOString().slice(0, 10);
+          const gen = await api.generateCalendar({
+            userId: state.user.userId,
+            product: method,
+            startDate: today,
+            hour: 9,
+          });
+          if (!gen.ok) return toast(gen.reason || "Could not generate schedule.");
+          api.downloadCalendarIcs(state.user.userId);
+        });
 
         const saveBtn = body.querySelector("#savetl-btn");
         saveBtn.addEventListener("click", async () => {
