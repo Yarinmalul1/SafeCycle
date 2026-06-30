@@ -17,7 +17,7 @@ import anthropic
 from models import GuidanceResult
 
 # Keep in sync with the model default in main.py.
-DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_MODEL = "claude-opus-4-7"
 
 PHRASER_SYSTEM = (
     "You are the Answer Phraser for SafeCycle, a contraception guidance app. "

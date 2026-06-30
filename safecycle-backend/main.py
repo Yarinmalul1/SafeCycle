@@ -60,8 +60,11 @@ DEMO_USER = "demo-user"
 
 load_dotenv()
 
-# Default to the latest, most capable Claude model. Override via env if needed.
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8")
+# Default to the latest released Claude model. Override via env if needed.
+# Note: claude-opus-4-8 does not exist; the latest Opus is 4.7. Using a
+# non-existent model id makes every messages.create() 404, which previously
+# silently degraded the phraser/fallback to their static safe defaults.
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-7")
 
 app = FastAPI(
     title="SafeCycle API",

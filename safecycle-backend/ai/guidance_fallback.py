@@ -20,7 +20,7 @@ import anthropic
 from models import GuidanceResult, ParsedScenario
 
 # Keep in sync with the model default in main.py.
-DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_MODEL = "claude-opus-4-7"
 
 # Mandatory tail appended to every fallback message. The fallback is not a
 # clinically-reviewed rule, so users must always see that this is AI-assisted
