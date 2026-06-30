@@ -69,6 +69,9 @@ export const ProfileView = {
         <h2 class="subtitle">Saved answers</h2>
         <div id="profile-history"><p class="empty">Loading…</p></div>
 
+        <h2 class="subtitle" style="margin-top:var(--space-3)">Chat history</h2>
+        <div id="profile-chats"><p class="empty">Loading…</p></div>
+
         <div class="stack" style="margin-top:var(--space-3)">
           <button id="profile-calendar" class="btn btn--secondary btn--block">
             <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
@@ -89,36 +92,68 @@ export const ProfileView = {
         });
 
         const histEl = el.querySelector("#profile-history");
-        let sessions;
-        try {
-          sessions = await api.getHistory(state.user?.userId);
-        } catch (err) {
-          histEl.innerHTML = `<div class="empty"><p class="muted">${escapeHtml(err.message)}</p></div>`;
-          return;
-        }
+        const chatsEl = el.querySelector("#profile-chats");
 
-        if (!sessions.length) {
-          histEl.innerHTML = `
-            <div class="empty">
-              <p class="muted">No saved answers yet.</p>
-              <button id="profile-start" class="btn btn--primary"
-                style="margin-top:var(--space-3)">Start a check</button>
+        // Sessions and chats are independent; load both concurrently and
+        // render each into its own slot.
+        const [sessionsResult, chatsResult] = await Promise.allSettled([
+          api.getHistory(state.user?.userId),
+          api.getChats(state.user?.userId),
+        ]);
+
+        // --- Saved answers (structured Q&A sessions) ---
+        if (sessionsResult.status === "rejected") {
+          histEl.innerHTML = `<div class="empty"><p class="muted">${escapeHtml(sessionsResult.reason.message)}</p></div>`;
+        } else {
+          const sessions = sessionsResult.value;
+          if (!sessions.length) {
+            histEl.innerHTML = `
+              <div class="empty">
+                <p class="muted">No saved answers yet.</p>
+                <button id="profile-start" class="btn btn--primary"
+                  style="margin-top:var(--space-3)">Start a check</button>
+              </div>`;
+            histEl.querySelector("#profile-start").addEventListener("click", () =>
+              router.go("/entry")
+            );
+          } else {
+            histEl.innerHTML = `<div class="list">
+              ${sessions
+                .map(
+                  (s) => `
+                <button class="list-item" data-id="${escapeHtml(s.id)}">
+                  <span class="choice__title">${escapeHtml(s.headline)}</span>
+                  <span class="list-item__meta">${escapeHtml(s.date)} · ${escapeHtml(s.product)}</span>
+                </button>`
+                )
+                .join("")}
             </div>`;
-          histEl.querySelector("#profile-start").addEventListener("click", () =>
-            router.go("/entry")
-          );
-          return;
+          }
         }
 
-        histEl.innerHTML = `<div class="list">
-          ${sessions
-            .map(
-              (s) => `
-            <button class="list-item" data-id="${escapeHtml(s.id)}">
-              <span class="choice__title">${escapeHtml(s.headline)}</span>
-              <span class="list-item__meta">${escapeHtml(s.date)} · ${escapeHtml(s.product)}</span>
-            </button>`
-            )
+        // --- Chat history (free-text LLM conversations) ---
+        if (chatsResult.status === "rejected") {
+          chatsEl.innerHTML = `<div class="empty"><p class="muted">${escapeHtml(chatsResult.reason.message)}</p></div>`;
+          return;
+        }
+        const chats = chatsResult.value;
+        if (!chats || !chats.length) {
+          chatsEl.innerHTML = `<div class="empty"><p class="muted">No chat conversations yet.</p></div>`;
+          return;
+        }
+        chatsEl.innerHTML = `<div class="list">
+          ${chats
+            .map((c) => {
+              const date = new Date(c.updated_at || c.created_at).toLocaleDateString(
+                undefined, { month: "short", day: "numeric" }
+              );
+              const status = c.complete ? "complete" : "in progress";
+              return `
+                <a class="list-item" href="#/chat?id=${encodeURIComponent(c.id)}">
+                  <span class="choice__title">${escapeHtml(c.summary || "Untitled chat")}</span>
+                  <span class="list-item__meta">${escapeHtml(date)} · ${status}</span>
+                </a>`;
+            })
             .join("")}
         </div>`;
       },

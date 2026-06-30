@@ -74,24 +74,20 @@ export const HomeView = {
 
         input.addEventListener("input", () => clearFieldError(input, errorEl));
 
-        const proceed = async () => {
+        // Free text -> open an LLM chat conversation. Situation buttons
+        // (below) still drive the structured Q&A flow; only the textbox
+        // opens chat, per spec.
+        // We don't state.reset() here so the user's previous structured
+        // result stays available for Protection status / Latest Q&A cards.
+        const proceed = () => {
           const text = input.value.trim();
           if (!text) {
             showFieldError(input, errorEl, "Please describe what happened, or pick an option below.");
             input.focus();
             return;
           }
-          state.reset();
           state.update({ rawInput: text });
-          // Parse may pre-fill the method to skip a step later. It's only a
-          // hint, so if the backend is unreachable we still continue the flow.
-          try {
-            const parsed = await api.parseInput(text);
-            if (parsed.method) state.update({ method: parsed.method });
-          } catch {
-            /* non-fatal: proceed without the pre-filled method */
-          }
-          router.go("/method");
+          router.go("/chat?new=1");
         };
 
         el.querySelector("#home-continue").addEventListener("click", proceed);

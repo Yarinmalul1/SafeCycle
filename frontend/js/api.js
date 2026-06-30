@@ -347,6 +347,69 @@ export const api = {
   },
 
   /**
+   * Chat - open a new chat conversation with the LLM contraception advisor.
+   * Body: { user_id, message }. Returns the session id, the full transcript
+   * (first user turn + first assistant turn), and a short summary used as the
+   * conversation title in Profile.
+   */
+  async startChat({ userId, message }) {
+    try {
+      const body = await request("/api/chat/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, message }),
+      });
+      return { ok: true, chat: body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+  },
+
+  /** Append the user's next message and get the assistant's reply. */
+  async sendChatMessage({ sessionId, content }) {
+    try {
+      const body = await request(`/api/chat/${encodeURIComponent(sessionId)}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      return { ok: true, chat: body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+  },
+
+  /** Mark a chat conversation complete (user clicked Done). */
+  async completeChat(sessionId) {
+    try {
+      const body = await request(`/api/chat/${encodeURIComponent(sessionId)}/done`, {
+        method: "POST",
+      });
+      return { ok: true, chat: body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+  },
+
+  /** Replay one chat (Profile view -> open a past chat). */
+  async getChat(sessionId) {
+    try {
+      const body = await request(`/api/chat/${encodeURIComponent(sessionId)}`);
+      return { ok: true, chat: body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+  },
+
+  /** List the signed-in user's recent chats. */
+  async getChats(userId) {
+    const path = userId
+      ? `/api/chats?user_id=${encodeURIComponent(userId)}`
+      : "/api/chats";
+    return await request(path);
+  },
+
+  /**
    * Calendar - fetch the user's saved schedule from the backend.
    * Returns { ok:true, calendar } if found, { ok:false, reason } on 404 / error.
    */
