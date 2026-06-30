@@ -118,17 +118,29 @@ async function ensureGsiInitialized() {
 const GCAL_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
 /** Open the OAuth consent popup for the Calendar scope and resolve with an
- *  access token. The token lives in memory only; it never goes to our backend. */
+ *  access token. The token lives in memory only; it never goes to our backend.
+ *
+ *  `prompt: "consent"` forces Google to show the consent dialog every time
+ *  instead of silently reusing the previous decision. Important after a
+ *  denial: without this, Google keeps returning the cached "denied" result
+ *  even after the user (or project owner) fixes the consent-screen config. */
 async function getCalendarAccessToken() {
   await loadGsi();
   return new Promise((resolve, reject) => {
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: GCAL_SCOPE,
-      prompt: "",
+      prompt: "consent",
       callback: (response) => {
-        if (response.error) reject(new Error(response.error_description || response.error));
-        else resolve(response.access_token);
+        if (response.error) {
+          // Surface Google's full error payload (error + error_description +
+          // error_uri) so the user sees the actionable detail rather than a
+          // generic "access_denied" string.
+          const parts = [response.error, response.error_description, response.error_uri].filter(Boolean);
+          reject(new Error(parts.join(" — ") || "Google sign-in failed."));
+        } else {
+          resolve(response.access_token);
+        }
       },
     });
     tokenClient.requestAccessToken();
