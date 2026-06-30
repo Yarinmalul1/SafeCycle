@@ -7,27 +7,64 @@
    signed-in user's id, so no separate save endpoint is needed -- the
    result screen shows a "Saved to history" confirmation link. */
 
-// Base URL of the FastAPI backend.
+// Base URL of the FastAPI backend. Must NOT have a trailing slash --
+// requests are built as `${API_BASE}${path}` and `path` always starts with
+// "/", so a trailing slash would produce e.g. ".../api//auth/google".
+//
+// The deployed frontend MUST hit the public Railway backend, not localhost.
+// Hostname mapping pairs each known frontend with its backend; anything that
+// looks like a Railway domain but doesn't match exactly still falls back to
+// the staging backend rather than localhost, so a subdomain rename, custom
+// domain, or proxy can't silently revert sign-in to a broken localhost call.
 //
 // Resolution order:
-//   1. window.SAFECYCLE_API_BASE -- runtime override, set this in index.html
-//      before api.js loads if you need a non-default backend (e.g. a PR
-//      preview pointing at a sibling staging service).
-//   2. Hostname mapping -- the deployed Railway frontend(s) map to their
-//      paired backend so the sign-in handler and every subsequent fetch hit
-//      the right public URL without rebuilding.
-//   3. localhost:8000 -- local dev fallback (matches `python main.py`).
+//   1. window.SAFECYCLE_API_BASE        -- runtime override (index.html).
+//   2. Exact hostname match             -- known frontend -> known backend.
+//   3. Any *.railway.app host           -- staging backend fallback.
+//   4. localhost / 127.0.0.1            -- local dev (`python main.py`).
+//   5. Anything else                    -- staging backend, with a console
+//                                          warning so it's diagnosable.
+const STAGING_FRONTEND_HOST = "frontend-staging-staging-a212.up.railway.app";
+const STAGING_BACKEND_URL = "https://backend-staging-staging-64b6.up.railway.app";
+const LOCAL_BACKEND_URL = "http://localhost:8000";
+
 function defaultApiBase() {
-  if (typeof window === "undefined") return "http://localhost:8000";
+  if (typeof window === "undefined") return LOCAL_BACKEND_URL;
   const host = window.location.hostname;
-  if (host === "frontend-staging-staging-a212.up.railway.app") {
-    return "https://backend-staging-staging-64b6.up.railway.app";
+
+  // 2. Exact pairing -- the primary, intended mapping.
+  if (host === STAGING_FRONTEND_HOST) return STAGING_BACKEND_URL;
+
+  // 3. Defensive fallback for any other Railway-hosted frontend (preview
+  //    deploys, renamed subdomains, etc.). Keeps sign-in working even if
+  //    the exact hostname above ever drifts.
+  if (host.endsWith(".up.railway.app") || host.endsWith(".railway.app")) {
+    return STAGING_BACKEND_URL;
   }
-  return "http://localhost:8000";
+
+  // 4. Local dev.
+  if (host === "localhost" || host === "127.0.0.1") return LOCAL_BACKEND_URL;
+
+  // 5. Unknown host (custom domain, ngrok, etc.). Prefer the real backend
+  //    over a broken localhost call; warn so it's visible in DevTools.
+  if (window.console && window.console.warn) {
+    window.console.warn(
+      `[SafeCycle] Unknown hostname "${host}"; falling back to staging backend ${STAGING_BACKEND_URL}.`
+    );
+  }
+  return STAGING_BACKEND_URL;
 }
 
 const API_BASE =
   (typeof window !== "undefined" && window.SAFECYCLE_API_BASE) || defaultApiBase();
+
+// Surface the resolved base URL once on load so it's trivial to verify in
+// DevTools that the sign-in POST will land on the right host.
+if (typeof window !== "undefined" && window.console && window.console.info) {
+  window.console.info(
+    `[SafeCycle] API_BASE = ${API_BASE} (hostname: ${window.location.hostname})`
+  );
+}
 
 const FAKE_LATENCY = 450; // ms - mimic a network round-trip for realistic UI
 
