@@ -161,6 +161,11 @@ export const ResultView = {
 
           <p class="disclaimer">${result.disclaimer}</p>
 
+          <p class="saved-line" id="saved-line">
+            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+            <a href="#/profile" id="saved-link">Saved to history</a>
+          </p>
+
           <div class="action-bar">
             <button id="gcal-btn" class="btn btn--secondary btn--block">
               <span class="material-symbols-outlined" aria-hidden="true">calendar_add_on</span>
@@ -170,10 +175,6 @@ export const ResultView = {
               <span class="material-symbols-outlined" aria-hidden="true">image</span>
               Generate planner image
             </button>
-            <p class="saved-line" id="saved-line">
-              <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
-              <a href="#/profile" id="saved-link">Saved to history</a>
-            </p>
             <button id="clinician-btn" class="clinician-link">
               <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
             </button>

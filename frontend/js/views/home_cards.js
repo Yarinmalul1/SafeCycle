@@ -34,9 +34,11 @@ const CARDS = [
   {
     icon: "chat",
     title: "Latest Q&A",
-    content: "Ask a new question or review your saved answers.",
+    content: "Open your most recent answer, or ask a new question.",
     action: "Ask a question",
-    go: "/entry",
+    // Same behaviour as Protection status: jump to the last result if one
+    // exists, otherwise open /entry to start a new conversation.
+    resolve: () => (state.session?.result ? "/result" : "/entry"),
   },
   {
     icon: "medical_services",
