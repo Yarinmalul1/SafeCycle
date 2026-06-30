@@ -464,6 +464,21 @@ def test_products_mark_supported_families():
     assert by_name["cerazette"]["supported"] is True
 
 
+def test_products_include_regimen_and_description():
+    # The catalog UI on the frontend renders these two fields per product, so
+    # the contract is that they're always present and non-empty.
+    response = client.get("/api/products")
+    products = response.json()
+    assert products, "catalog should not be empty"
+    for p in products:
+        assert p["regimen"], f"{p['name']} missing regimen"
+        assert p["description"], f"{p['name']} missing description"
+    by_name = {p["name"]: p for p in products}
+    assert by_name["yasmin"]["regimen"] == "21+7"
+    assert by_name["yaz"]["regimen"] == "24+4"
+    assert by_name["seasonique"]["regimen"] == "84+7"
+
+
 # --------------------------------------------------------------------------- #
 # /api/history
 # --------------------------------------------------------------------------- #

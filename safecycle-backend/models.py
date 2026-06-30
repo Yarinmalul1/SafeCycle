@@ -300,6 +300,14 @@ class ProductInfo(BaseModel):
         description="Whether the logic engine has a rule set for this product's "
         "family yet.",
     )
+    regimen: str = Field(
+        ...,
+        description="Pack regimen in short form (e.g. '21+7', 'continuous', '84+7').",
+    )
+    description: str = Field(
+        ...,
+        description="One-line plain-language explainer for the catalog UI.",
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -296,6 +296,15 @@ export const api = {
   },
 
   /**
+   * Product catalog (via the backend).
+   * GET /api/products -> ProductInfo[] { name, type, supported, regimen, description }
+   * The catalog screen renders these grouped by pill family.
+   */
+  async getProducts() {
+    return await request("/api/products");
+  },
+
+  /**
    * Session history (via the backend).
    * GET /api/history?user_id=... -> HistorySession[]; mapped by adaptHistory
    * into the compact shape the Profile list renders. Scoped to the signed-in

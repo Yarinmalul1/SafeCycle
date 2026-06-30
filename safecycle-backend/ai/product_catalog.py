@@ -12,14 +12,40 @@ from __future__ import annotations
 
 from models import PillType
 
-# Seed catalog: product name (lowercase) -> pill family.
-CATALOG: dict[str, PillType] = {
-    "yasmin": PillType.COMBINED,  # combined, 21 active + 7 inactive
-    "yaz": PillType.COMBINED,  # combined, 24 active + 4 inactive
-    "cerazette": PillType.PROGESTOGEN_ONLY,  # desogestrel, 12h window
-    "micronor": PillType.PROGESTOGEN_ONLY,  # norethisterone, 3h window
-    "seasonique": PillType.EXTENDED_CYCLE,  # 84 active + 7 low-dose
-    "nuvaring": PillType.RING,  # vaginal ring, 3 weeks in / 1 week out
+# Seed catalog: product name (lowercase) -> (pill family, regimen, plain-language
+# description for the catalog UI). Keep descriptions short -- one line each --
+# because the frontend renders them in a compact list row.
+CATALOG: dict[str, tuple[PillType, str, str]] = {
+    "yasmin": (
+        PillType.COMBINED,
+        "21+7",
+        "21 active pills then 7 inactive (or pill-free) days. Repeat each pack.",
+    ),
+    "yaz": (
+        PillType.COMBINED,
+        "24+4",
+        "24 active pills then 4 inactive days. Shorter break than a 21+7 pack.",
+    ),
+    "cerazette": (
+        PillType.PROGESTOGEN_ONLY,
+        "continuous",
+        "Taken every day with no break. Late by more than 12 hours counts as missed.",
+    ),
+    "micronor": (
+        PillType.PROGESTOGEN_ONLY,
+        "continuous",
+        "Taken every day with no break. Stricter 3-hour late window than desogestrel POPs.",
+    ),
+    "seasonique": (
+        PillType.EXTENDED_CYCLE,
+        "84+7",
+        "Extended cycle: 84 active pills then 7 low-dose pills, so you bleed once a season.",
+    ),
+    "nuvaring": (
+        PillType.RING,
+        "21+7",
+        "A flexible vaginal ring. In for 3 weeks, out for the 4th, then start a new one.",
+    ),
 }
 
 # Product families the logic engine currently has a rule set for.
@@ -52,12 +78,19 @@ def is_supported(product: str) -> bool:
 def list_products() -> list[dict]:
     """Return the catalog as a sorted list of product records.
 
-    Each record has the product `name`, its pill-family `type`, and whether it
-    is `supported` (i.e. the engine has rules for that family).
+    Each record has the product `name`, its pill-family `type`, whether it is
+    `supported` (i.e. the engine has rules for that family), the pack `regimen`,
+    and a plain-language `description` for the catalog UI.
     """
     return [
-        {"name": name, "type": ptype, "supported": ptype in SUPPORTED_TYPES}
-        for name, ptype in sorted(CATALOG.items())
+        {
+            "name": name,
+            "type": ptype,
+            "supported": ptype in SUPPORTED_TYPES,
+            "regimen": regimen,
+            "description": description,
+        }
+        for name, (ptype, regimen, description) in sorted(CATALOG.items())
     ]
 
 
@@ -68,4 +101,5 @@ def normalize(product: str) -> str:
 
 def pill_type(product: str) -> PillType:
     """Return the pill family for a product, or UNKNOWN if unrecognized."""
-    return CATALOG.get(normalize(product), PillType.UNKNOWN)
+    entry = CATALOG.get(normalize(product))
+    return entry[0] if entry else PillType.UNKNOWN
