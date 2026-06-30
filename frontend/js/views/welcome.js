@@ -1,9 +1,8 @@
 /* View: Welcome / Landing (the first screen, per Stitch "Welcome").
-   Brand hero + required Google sign-in → dashboard; "Learn how it works" → info. */
+   Brand hero + required Google sign-in → /entry; "Learn how it works" → info. */
 import { state } from "../state.js";
 import { router } from "../router.js";
 import { api } from "../api.js";
-import { isDevHost } from "../util.js";
 import { toast } from "../toast.js";
 
 const TRUST = [
@@ -26,9 +25,6 @@ const TRUST = [
 
 export const WelcomeView = {
   render() {
-    const devSkip = isDevHost()
-      ? `<button id="welcome-demo" class="btn btn--ghost btn--block">Skip to Demo (test user)</button>`
-      : "";
     return {
       title: "SafeCycle",
       html: `
@@ -51,7 +47,6 @@ export const WelcomeView = {
             <button id="welcome-learn" class="btn btn--secondary btn--block">
               Learn how SafeCycle works
             </button>
-            ${devSkip}
             <p class="subtle">Sign in keeps your answers private and saved to your account.</p>
           </div>
 
@@ -75,18 +70,6 @@ export const WelcomeView = {
           router.go("/info")
         );
 
-        const demoBtn = el.querySelector("#welcome-demo");
-        if (demoBtn) {
-          demoBtn.addEventListener("click", async () => {
-            const res = await api.signInAsDemo();
-            if (res.ok && res.user) {
-              state.setUser(res.user);
-              state.reset();
-              router.go("/dashboard");
-            }
-          });
-        }
-
         // Mount the official Google sign-in button. The promise resolves when
         // the user actually clicks it and Google returns an ID token; until
         // then this just awaits silently in the background.
@@ -95,7 +78,7 @@ export const WelcomeView = {
           if (res.ok && res.user) {
             state.setUser(res.user);
             state.reset();
-            router.go("/dashboard");
+            router.go("/entry");
           } else if (res.reason) {
             toast(res.reason);
           }

@@ -344,16 +344,6 @@ export const api = {
   },
 
   /**
-   * DEV ONLY - sign in as a fixed test user, bypassing Google entirely.
-   * Lets us exercise the gated flow before a real Google Client ID exists.
-   * The UI only exposes this on localhost (see isDevHost), so it never reaches
-   * a deployed build.
-   */
-  async signInAsDemo() {
-    return { ok: true, user: { name: "Test User", email: "test@example.com" } };
-  },
-
-  /**
    * Calendar - generate and persist a contraception schedule for the user.
    * Returns the stored row (or { ok: false, reason } on failure).
    */
