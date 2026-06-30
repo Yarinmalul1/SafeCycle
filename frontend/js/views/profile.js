@@ -70,12 +70,19 @@ export const ProfileView = {
         <div id="profile-history"><p class="empty">Loading…</p></div>
 
         <div class="stack" style="margin-top:var(--space-3)">
+          <button id="profile-calendar" class="btn btn--secondary btn--block">
+            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            View your calendar
+          </button>
           <button id="profile-signout" class="btn btn--ghost btn--block">
             Sign out
           </button>
         </div>
       `,
       async onMount(el) {
+        el.querySelector("#profile-calendar").addEventListener("click", () =>
+          router.go("/calendar")
+        );
         el.querySelector("#profile-signout").addEventListener("click", () => {
           state.setUser(null);
           router.go("/"); // back to the sign-in / welcome screen

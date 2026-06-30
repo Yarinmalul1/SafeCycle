@@ -353,6 +353,19 @@ export const api = {
   },
 
   /**
+   * Calendar - fetch the user's saved schedule from the backend.
+   * Returns { ok:true, calendar } if found, { ok:false, reason } on 404 / error.
+   */
+  async getCalendar(userId) {
+    try {
+      const body = await request(`/api/calendar/${encodeURIComponent(userId)}`);
+      return { ok: true, calendar: body };
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+  },
+
+  /**
    * Calendar - generate and persist a contraception schedule for the user.
    * Returns the stored row (or { ok: false, reason } on failure).
    */

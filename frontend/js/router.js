@@ -91,7 +91,7 @@ export const router = {
     // Highlight the active bottom-nav item.
     const navKey =
       path === "/catalog" ? "catalog" :
-      path === "/profile" ? "profile" :
+      path === "/profile" || path === "/calendar" ? "profile" :
       ["/", "/entry", "/method", "/questions", "/result"].includes(path) ? "home" :
       null;
     document.querySelectorAll(".bottom-nav__item").forEach((a) => {

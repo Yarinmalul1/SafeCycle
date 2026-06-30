@@ -826,6 +826,116 @@
   color: var(--color-text-muted);
 }
 
+/* ---- Calendar (visual month-grid on /calendar) ---- */
+.cal-months {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.cal-month__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  margin-bottom: var(--space-1);
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 4px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.cal-cell--empty {
+  background: transparent;
+  border: none;
+}
+
+.cal-cell--has-event {
+  background: var(--color-primary-bg, #fff1f2);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.cal-cell--today {
+  outline: 2px solid var(--color-primary-strong);
+  outline-offset: -2px;
+}
+
+.cal-cell__num {
+  line-height: 1;
+}
+
+.cal-cell__dot {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary-strong);
+}
+
+.cal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cal-list__row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.cal-list__when {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-sm);
+}
+
+.cal-list__what {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-sm);
+}
+
 /* ---- Stub badge: marks placeholder medical/data content ---- */
 .stub-badge {
   display: inline-flex;
