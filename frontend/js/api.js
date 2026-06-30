@@ -3,8 +3,9 @@
    Talks to the FastAPI backend (/api/*), which runs the logic engine,
    Claude, and history. Each method translates between the backend's
    schemas and the shapes the views render (see the shape adapters below).
-   /api/guidance persists each call to the sessions table, so saveSession
-   is just a UI confirmation -- the row already exists in Supabase. */
+   /api/guidance persists each call to the sessions table under the
+   signed-in user's id, so no separate save endpoint is needed -- the
+   result screen shows a "Saved to history" confirmation link. */
 
 // Base URL of the FastAPI backend. Override at runtime by setting
 // window.SAFECYCLE_API_BASE before this module loads (e.g. in index.html).
@@ -316,13 +317,6 @@ export const api = {
       : "/api/history";
     const sessions = await request(path);
     return adaptHistory(sessions);
-  },
-
-  /** UI confirmation. The session was already persisted server-side during
-   *  the matching getGuidance call, so no extra round-trip is needed. */
-  async saveSession(_session) {
-    await delay(FAKE_LATENCY);
-    return { ok: true };
   },
 
   /**

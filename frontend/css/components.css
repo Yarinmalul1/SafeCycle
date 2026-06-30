@@ -826,6 +826,27 @@
   color: var(--color-text-muted);
 }
 
+/* ---- Saved-to-history line on the result page ---- */
+.saved-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-content: center;
+  font-size: var(--fs-sm);
+  color: var(--color-ok);
+  margin: 0;
+}
+
+.saved-line .material-symbols-outlined {
+  font-size: 1.125rem;
+}
+
+.saved-line a {
+  color: var(--color-ok);
+  text-decoration: underline;
+  font-weight: var(--fw-semibold);
+}
+
 /* ---- Home cards (the 6-card hub at /home) ---- */
 .welcome-banner {
   display: flex;

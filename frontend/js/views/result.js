@@ -170,7 +170,10 @@ export const ResultView = {
               <span class="material-symbols-outlined" aria-hidden="true">image</span>
               Generate planner image
             </button>
-            <button id="savetl-btn" class="btn btn--secondary btn--block">Save to timeline</button>
+            <p class="saved-line" id="saved-line">
+              <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+              <a href="#/profile" id="saved-link">Saved to history</a>
+            </p>
             <button id="clinician-btn" class="clinician-link">
               <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
             </button>
@@ -243,17 +246,12 @@ export const ResultView = {
           toast(`Calendar export: ${parts.join(", ") || "no events"}`);
         });
 
-        const saveBtn = body.querySelector("#savetl-btn");
-        saveBtn.addEventListener("click", async () => {
-          if (!loggedIn) {
-            toast("Sign in on your profile to save answers to your timeline.");
-            return;
-          }
-          saveBtn.disabled = true;
-          saveBtn.textContent = "Saving…";
-          await api.saveSession(s);
-          saveBtn.textContent = "Saved ✓";
-        });
+        // "Saved to history" is a confirmation line: /api/guidance already
+        // persisted this session to Supabase under the user's id during the
+        // initial fetch above. When the user isn't signed in there's no
+        // history row, so we hide the line entirely rather than lie.
+        const savedLine = body.querySelector("#saved-line");
+        if (!loggedIn) savedLine.hidden = true;
       },
     };
   },
