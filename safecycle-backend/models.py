@@ -386,3 +386,54 @@ class CalendarResponse(BaseModel):
     )
     created_at: str
     updated_at: str
+
+
+# --------------------------------------------------------------------------- #
+# Chat role -- request/response models
+# --------------------------------------------------------------------------- #
+class ChatStartRequest(BaseModel):
+    """Open a new chat conversation."""
+
+    user_id: str = Field(..., description="Supabase user uuid that owns the chat.")
+    message: str = Field(
+        ..., min_length=1, description="The user's first question (free text)."
+    )
+
+
+class ChatMessageRequest(BaseModel):
+    """Append the user's next message to an existing chat."""
+
+    content: str = Field(..., min_length=1, description="The user's message text.")
+
+
+class ChatMessage(BaseModel):
+    """One turn in a chat conversation."""
+
+    role: str = Field(..., description="'user' or 'assistant'.")
+    content: str = Field(..., description="The message text.")
+    created_at: str | None = Field(
+        default=None, description="UTC ISO-8601 timestamp (server-set)."
+    )
+
+
+class ChatTurnResponse(BaseModel):
+    """Returned after start/message: the full transcript plus the new reply."""
+
+    session_id: str = Field(..., description="The chat conversation id.")
+    messages: list[ChatMessage] = Field(
+        ..., description="All messages in the conversation, oldest first."
+    )
+    summary: str = Field(..., description="Short summary used as the chat title.")
+    complete: bool = Field(
+        ..., description="True once the chat has been marked done."
+    )
+
+
+class ChatSummary(BaseModel):
+    """One row in the user's list of past chats (Profile screen)."""
+
+    id: str
+    summary: str
+    created_at: str
+    updated_at: str
+    complete: bool

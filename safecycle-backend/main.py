@@ -27,6 +27,7 @@ from pydantic import ValidationError
 
 from ai import (
     answer_phraser,
+    chat as chat_module,
     guidance_fallback,
     history_manager,
     product_catalog,
@@ -34,7 +35,7 @@ from ai import (
     safety_filter,
 )
 from ai.product_catalog import pill_type
-from db import calendars, queries, sessions, users
+from db import calendars, chats, queries, sessions, users
 from logic import calendar as calendar_generator
 from logic import engine, switching
 from models import (
@@ -42,6 +43,11 @@ from models import (
     AuthUser,
     CalendarGenerateRequest,
     CalendarResponse,
+    ChatMessage,
+    ChatMessageRequest,
+    ChatStartRequest,
+    ChatSummary,
+    ChatTurnResponse,
     GoogleAuthRequest,
     GuidanceResponse,
     HistorySession,
@@ -429,6 +435,148 @@ def calendar_ics(user_id: str) -> Response:
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# --------------------------------------------------------------------------- #
+# Chat role -- endpoints
+# --------------------------------------------------------------------------- #
+def _summarise(text: str, limit: int = 80) -> str:
+    """Cheap, deterministic summary used as the chat title in Profile.
+
+    Trims to first sentence (or `limit` chars). No LLM call -- titles need to
+    be stable across replays and we don't want a second Claude round-trip
+    just to name the chat.
+    """
+    t = " ".join(text.split())
+    cut = min((t.find(p) for p in (". ", "? ", "! ") if t.find(p) != -1), default=-1)
+    if 0 < cut < limit:
+        return t[: cut + 1]
+    return t[:limit] + ("…" if len(t) > limit else "")
+
+
+def _row_to_message(row: dict) -> ChatMessage:
+    return ChatMessage(
+        role=row["role"], content=row["content"], created_at=row.get("created_at")
+    )
+
+
+@app.post("/api/chat/start", response_model=ChatTurnResponse)
+def chat_start(req: ChatStartRequest) -> ChatTurnResponse:
+    """Open a new chat conversation and return the first assistant turn.
+
+    Creates a chat_sessions row, records the user's first message, asks Claude
+    for the next turn, records that too, and returns the full transcript.
+    """
+    try:
+        session = chats.create_session(user_id=req.user_id, summary=_summarise(req.message))
+        chats.append_message(session_id=session["id"], role="user", content=req.message)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=503,
+            detail="Could not start chat. Please try again.",
+        ) from exc
+
+    reply = chat_module.respond(
+        messages=[{"role": "user", "content": req.message}],
+        client=client,
+        model=MODEL,
+    )
+    try:
+        chats.append_message(session_id=session["id"], role="assistant", content=reply)
+    except Exception:  # noqa: BLE001 -- the reply is still returned to the user
+        pass
+
+    messages = chats.get_messages(session["id"])
+    return ChatTurnResponse(
+        session_id=session["id"],
+        messages=[_row_to_message(m) for m in messages],
+        summary=session["summary"],
+        complete=False,
+    )
+
+
+@app.post("/api/chat/{session_id}/message", response_model=ChatTurnResponse)
+def chat_message(session_id: str, req: ChatMessageRequest) -> ChatTurnResponse:
+    """Append the user's next message and return the assistant's reply."""
+    session = chats.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="No such chat.")
+    if session.get("complete"):
+        raise HTTPException(status_code=409, detail="This chat is already complete.")
+
+    try:
+        chats.append_message(session_id=session_id, role="user", content=req.content)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=503,
+            detail="Could not save your message. Please try again.",
+        ) from exc
+
+    history = [
+        {"role": m["role"], "content": m["content"]}
+        for m in chats.get_messages(session_id)
+    ]
+    reply = chat_module.respond(messages=history, client=client, model=MODEL)
+    try:
+        chats.append_message(session_id=session_id, role="assistant", content=reply)
+    except Exception:  # noqa: BLE001
+        pass
+
+    messages = chats.get_messages(session_id)
+    return ChatTurnResponse(
+        session_id=session_id,
+        messages=[_row_to_message(m) for m in messages],
+        summary=session["summary"],
+        complete=bool(session.get("complete")),
+    )
+
+
+@app.post("/api/chat/{session_id}/done", response_model=ChatTurnResponse)
+def chat_done(session_id: str) -> ChatTurnResponse:
+    """Mark the chat complete (user clicked Done). Returns the final state."""
+    session = chats.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="No such chat.")
+    chats.mark_complete(session_id)
+    session = chats.get_session(session_id) or session
+    messages = chats.get_messages(session_id)
+    return ChatTurnResponse(
+        session_id=session_id,
+        messages=[_row_to_message(m) for m in messages],
+        summary=session["summary"],
+        complete=True,
+    )
+
+
+@app.get("/api/chat/{session_id}", response_model=ChatTurnResponse)
+def chat_get(session_id: str) -> ChatTurnResponse:
+    """Return a saved chat conversation (for the Profile history view)."""
+    session = chats.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="No such chat.")
+    messages = chats.get_messages(session_id)
+    return ChatTurnResponse(
+        session_id=session_id,
+        messages=[_row_to_message(m) for m in messages],
+        summary=session["summary"],
+        complete=bool(session.get("complete")),
+    )
+
+
+@app.get("/api/chats", response_model=list[ChatSummary])
+def chat_list(user_id: str = DEMO_USER, limit: int = 20) -> list[ChatSummary]:
+    """List a user's recent chat conversations, newest activity first."""
+    rows = chats.recent_for_user(user_id, limit=limit)
+    return [
+        ChatSummary(
+            id=row["id"],
+            summary=row["summary"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+            complete=bool(row["complete"]),
+        )
+        for row in rows
+    ]
 
 
 if __name__ == "__main__":
