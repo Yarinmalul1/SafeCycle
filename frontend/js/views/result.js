@@ -60,9 +60,13 @@ export const ResultView = {
         <div id="result-body" hidden></div>
       `,
       async onMount(el) {
-        let result;
+        // If we already have a result in state (e.g. user navigated back from
+        // home via "Protection status"), reuse it instead of re-running the
+        // engine. Re-running would write a duplicate row to the sessions
+        // table and the user would see the same answer with a fresh latency.
+        let result = state.result;
         try {
-          result = await api.getGuidance(s, state.user?.userId);
+          if (!result) result = await api.getGuidance(s, state.user?.userId);
         } catch (err) {
           el.querySelector("#result-loading").hidden = true;
           const body = el.querySelector("#result-body");

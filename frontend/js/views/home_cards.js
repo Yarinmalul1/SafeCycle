@@ -24,9 +24,11 @@ const CARDS = [
   {
     icon: "shield",
     title: "Protection status",
-    content: "Run a check to see your current status.",
+    content: "See your current status from your last check.",
     action: "Check current status",
-    go: "/entry",
+    // Resolved at click time so we can route to the previous result if there
+    // is one, otherwise start a fresh check. Returns a path string.
+    resolve: () => (state.result ? "/result" : "/entry"),
   },
   {
     icon: "chat",
@@ -51,9 +53,9 @@ const CARDS = [
   },
   {
     icon: "calendar_month",
-    title: "Google Calendar",
+    title: "Calendar",
     content: "View your schedule and sync it to your Google Calendar.",
-    action: "Connect calendar",
+    action: "View schedule",
     go: "/calendar",
   },
 ];
@@ -100,7 +102,8 @@ export const HomeCardsView = {
         el.querySelectorAll("[data-card]").forEach((btn) =>
           btn.addEventListener("click", () => {
             const card = CARDS[Number(btn.dataset.card)];
-            router.go(card.go);
+            const path = card.resolve ? card.resolve() : card.go;
+            router.go(path);
           })
         );
       },
