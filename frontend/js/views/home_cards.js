@@ -4,6 +4,7 @@
    from the result page's "Back to Home" button. */
 import { state } from "../state.js";
 import { router } from "../router.js";
+import { api } from "../api.js";
 import { escapeHtml } from "../util.js";
 
 function firstName() {
@@ -22,23 +23,35 @@ const CARDS = [
     go: "/calendar",
   },
   {
-    icon: "shield",
-    title: "Protection status",
-    content: "See your current status from your last check.",
-    action: "Check current status",
-    // Resolved at click time so we can route to the previous result if
-    // state.session.result is populated, otherwise start a fresh check.
-    // (state.result is undefined -- result lives on the session record.)
-    resolve: () => (state.session?.result ? "/result" : "/entry"),
+    icon: "history",
+    title: "History",
+    content: "View your past answers and previous guidance sessions.",
+    action: "See all previous sessions",
+    go: "/profile",
   },
   {
     icon: "chat",
     title: "Latest Q&A",
-    content: "Open your most recent answer, or ask a new question.",
-    action: "Ask a question",
-    // Same behaviour as Protection status: jump to the last result if one
-    // exists, otherwise open /entry to start a new conversation.
-    resolve: () => (state.session?.result ? "/result" : "/entry"),
+    content: "Open your most recent answer.",
+    action: "Open last answer",
+    // "Latest" = most recent thing the user has. Chats are the primary Q&A
+    // path now, so prefer the newest chat. Fall back to the last structured
+    // result if there are no chats, then to /entry as a last resort.
+    resolve: async () => {
+      const userId = state.user?.userId;
+      if (userId) {
+        try {
+          const chats = await api.getChats(userId);
+          if (chats && chats.length) {
+            return `/chat?id=${encodeURIComponent(chats[0].id)}`;
+          }
+        } catch {
+          /* fall through to the structured result fallback */
+        }
+      }
+      if (state.session?.result) return "/result";
+      return "/entry";
+    },
   },
   {
     icon: "medical_services",
@@ -103,10 +116,16 @@ export const HomeCardsView = {
         });
 
         el.querySelectorAll("[data-card]").forEach((btn) =>
-          btn.addEventListener("click", () => {
+          btn.addEventListener("click", async () => {
             const card = CARDS[Number(btn.dataset.card)];
-            const path = card.resolve ? card.resolve() : card.go;
-            router.go(path);
+            // Disable while resolving so a double-click can't fire twice.
+            btn.disabled = true;
+            try {
+              const path = card.resolve ? await card.resolve() : card.go;
+              router.go(path);
+            } finally {
+              btn.disabled = false;
+            }
           })
         );
       },
