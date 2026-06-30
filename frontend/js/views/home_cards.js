@@ -26,9 +26,10 @@ const CARDS = [
     title: "Protection status",
     content: "See your current status from your last check.",
     action: "Check current status",
-    // Resolved at click time so we can route to the previous result if there
-    // is one, otherwise start a fresh check. Returns a path string.
-    resolve: () => (state.result ? "/result" : "/entry"),
+    // Resolved at click time so we can route to the previous result if
+    // state.session.result is populated, otherwise start a fresh check.
+    // (state.result is undefined -- result lives on the session record.)
+    resolve: () => (state.session?.result ? "/result" : "/entry"),
   },
   {
     icon: "chat",

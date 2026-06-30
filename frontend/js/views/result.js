@@ -65,7 +65,7 @@ export const ResultView = {
         // home via "Protection status"), reuse it instead of re-running the
         // engine. Re-running would write a duplicate row to the sessions
         // table and the user would see the same answer with a fresh latency.
-        let result = state.result;
+        let result = state.session.result;
         try {
           if (!result) result = await api.getGuidance(s, state.user?.userId);
         } catch (err) {
@@ -192,7 +192,9 @@ export const ResultView = {
           router.go("/entry");
         });
         body.querySelector("#home-btn").addEventListener("click", () => {
-          state.reset();
+          // Don't reset: keep session.result so "Protection status" on the
+          // home cards can route back here. "Start another conversation"
+          // is the explicit reset path.
           router.go("/home");
         });
 
