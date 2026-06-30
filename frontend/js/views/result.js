@@ -4,6 +4,7 @@ import { router } from "../router.js";
 import { api } from "../api.js";
 import { openEscalation } from "../escalation.js";
 import { toast } from "../toast.js";
+import { downloadPlanner } from "../planner.js";
 
 const STATUS_META = {
   ok: { cls: "result-header--ok", icon: "check_circle" },
@@ -165,6 +166,10 @@ export const ResultView = {
               <span class="material-symbols-outlined" aria-hidden="true">calendar_add_on</span>
               Add to Google Calendar
             </button>
+            <button id="planner-btn" class="btn btn--secondary btn--block">
+              <span class="material-symbols-outlined" aria-hidden="true">image</span>
+              Generate planner image
+            </button>
             <button id="savetl-btn" class="btn btn--secondary btn--block">Save to timeline</button>
             <button id="clinician-btn" class="clinician-link">
               <span class="material-symbols-outlined" aria-hidden="true">stethoscope</span> Talk to a clinician
@@ -190,6 +195,22 @@ export const ResultView = {
           state.reset();
           router.go("/home");
         });
+
+        // Planner image: render the timeline as a designed PNG card and
+        // download it. Pure client-side (Canvas API); no backend round-trip.
+        body.querySelector("#planner-btn").addEventListener("click", () => {
+          try {
+            downloadPlanner({
+              product: state.session.product?.name || state.session.method || "Your method",
+              result,
+              timeline,
+            });
+            toast("Your planner image is downloading.");
+          } catch (err) {
+            toast(`Couldn't generate planner image: ${err.message}`);
+          }
+        });
+
         // Calendar export: generate the 90-day schedule for the user's method,
         // then push events to their Google Calendar. Requires sign-in.
         body.querySelector("#gcal-btn").addEventListener("click", async () => {
