@@ -678,6 +678,17 @@ def test_auth_google_rejects_unverified_email():
     assert "verified" in response.json()["detail"].lower()
 
 
+def test_auth_google_get_redirects_to_frontend_instead_of_405():
+    # GETs on /api/auth/google previously 405'd (the real flow is POST-only),
+    # which surfaced as noise in Railway logs from Google Console verification
+    # probes / address-bar visits. Now we bounce them back to the sign-in
+    # page on the frontend.
+    response = client.get("/api/auth/google", follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers.get("location", "")
+    assert location.startswith("https://") or location.startswith("http://")
+
+
 # --------------------------------------------------------------------------- #
 # /api/calendar (Phase 3)
 # --------------------------------------------------------------------------- #

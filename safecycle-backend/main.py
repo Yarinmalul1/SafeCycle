@@ -18,8 +18,8 @@ from datetime import date, datetime, timedelta
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import RedirectResponse, Response
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from fastapi.middleware.cors import CORSMiddleware
@@ -357,6 +357,39 @@ def auth_google(req: GoogleAuthRequest) -> AuthUser:
         ) from exc
 
     return AuthUser(name=name, email=email, userId=row["id"])
+
+
+# Default frontend URL the auth GET handler bounces visitors back to. The
+# real flow never hits the GET path (see auth_google_get below), but if
+# someone lands here -- Google OAuth Console verification probe, a redirect
+# URI configured against the code flow, or a developer pasting the URL into
+# the address bar -- we'd rather send them to the sign-in page than 405.
+_DEFAULT_FRONTEND_URL = "https://frontend-staging-staging-a212.up.railway.app"
+
+
+@app.get("/api/auth/google", include_in_schema=False)
+def auth_google_get(request: Request) -> RedirectResponse:
+    """Defensive handler so GETs on /api/auth/google don't 405.
+
+    SafeCycle's real auth flow is:
+        client (Google Identity Services) -> ID token (JWT) -> POST here.
+    Nothing in the app issues a GET to this URL. But three things in the
+    wild do, and each previously surfaced as a noisy 405 in Railway logs:
+
+      1. Google OAuth Console verification probes the redirect URI(s)
+         configured on the OAuth client.
+      2. A misconfigured authorization-code-flow redirect URI sends the
+         user back here with ``?code=...`` instead of completing the
+         implicit flow on the client.
+      3. A developer pastes the backend URL into the browser address bar.
+
+    In every case the right answer is "go back to the frontend and sign in
+    there" -- which is what this 302 does. The target URL is the staging
+    frontend by default, overridable per environment via
+    ``SAFECYCLE_FRONTEND_URL`` (production should set this on Railway).
+    """
+    target = os.getenv("SAFECYCLE_FRONTEND_URL", _DEFAULT_FRONTEND_URL).rstrip("/")
+    return RedirectResponse(url=f"{target}/", status_code=302)
 
 
 # --------------------------------------------------------------------------- #
