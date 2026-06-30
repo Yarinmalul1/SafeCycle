@@ -62,7 +62,7 @@ export const ResultView = {
       async onMount(el) {
         let result;
         try {
-          result = await api.getGuidance(s);
+          result = await api.getGuidance(s, state.user?.userId);
         } catch (err) {
           el.querySelector("#result-loading").hidden = true;
           const body = el.querySelector("#result-body");

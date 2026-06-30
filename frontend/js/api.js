@@ -3,7 +3,8 @@
    Talks to the FastAPI backend (/api/*), which runs the logic engine,
    Claude, and history. Each method translates between the backend's
    schemas and the shapes the views render (see the shape adapters below).
-   saveSession remains a stub until a backend save endpoint exists. */
+   /api/guidance persists each call to the sessions table, so saveSession
+   is just a UI confirmation -- the row already exists in Supabase. */
 
 // Base URL of the FastAPI backend. Override at runtime by setting
 // window.SAFECYCLE_API_BASE before this module loads (e.g. in index.html).
@@ -264,11 +265,17 @@ export const api = {
 
   /**
    * Logic engine + answer phraser (via the backend).
-   * POST /api/guidance <ParsedScenario> -> GuidanceResponse { guidance, message }
-   * Shapes are translated in and out by sessionToParsedScenario / adaptGuidance.
+   * POST /api/guidance?user_id=... <ParsedScenario> -> GuidanceResponse
+   * The backend persists each call to the Supabase sessions table under
+   * `user_id`, which is why we pass the signed-in user's id through. Without
+   * it the row is attributed to "demo-user", whose FK doesn't resolve and
+   * the insert is silently dropped.
    */
-  async getGuidance(session) {
-    const resp = await request("/api/guidance", {
+  async getGuidance(session, userId) {
+    const path = userId
+      ? `/api/guidance?user_id=${encodeURIComponent(userId)}`
+      : "/api/guidance";
+    const resp = await request(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sessionToParsedScenario(session)),
@@ -278,18 +285,23 @@ export const api = {
 
   /**
    * Session history (via the backend).
-   * GET /api/history -> HistorySession[]; mapped by adaptHistory into the
-   * compact shape the Profile list renders.
+   * GET /api/history?user_id=... -> HistorySession[]; mapped by adaptHistory
+   * into the compact shape the Profile list renders. Scoped to the signed-in
+   * user via the same user_id used at write time.
    */
-  async getHistory() {
-    const sessions = await request("/api/history");
+  async getHistory(userId) {
+    const path = userId
+      ? `/api/history?user_id=${encodeURIComponent(userId)}`
+      : "/api/history";
+    const sessions = await request(path);
     return adaptHistory(sessions);
   },
 
-  /** STUB - Save a result (Supabase). */
+  /** UI confirmation. The session was already persisted server-side during
+   *  the matching getGuidance call, so no extra round-trip is needed. */
   async saveSession(_session) {
     await delay(FAKE_LATENCY);
-    return { ok: true, _stub: true };
+    return { ok: true };
   },
 
   /**

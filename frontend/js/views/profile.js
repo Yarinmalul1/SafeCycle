@@ -84,7 +84,7 @@ export const ProfileView = {
         const histEl = el.querySelector("#profile-history");
         let sessions;
         try {
-          sessions = await api.getHistory();
+          sessions = await api.getHistory(state.user?.userId);
         } catch (err) {
           histEl.innerHTML = `<div class="empty"><p class="muted">${escapeHtml(err.message)}</p></div>`;
           return;
