@@ -198,15 +198,17 @@ def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceRespon
     scenario = _to_pill_scenario(parsed)
     result = engine.evaluate(scenario)
 
-    # Unknown products land in the engine's "unsupported" branch. The engine
-    # returns a generic MODERATE result there; if we handed that straight to
-    # the frontend, adaptGuidance would build misleading steps ("Take the
-    # most recent missed or late pill" for a patch) and a dangerous timeline
-    # ("No backup needed - you're protected"). Instead we ask Claude for
-    # STRUCTURED guidance and use its shape - the frontend then renders the
-    # correct steps, backup card, and timeline just like it does for a
-    # known product.
-    if pill_type(scenario.product) is PillType.UNKNOWN:
+    # Products the engine has no rule set for land in its "unsupported"
+    # branch. UNKNOWN products (an unrecognised brand) obviously; PATCH
+    # products too (Evra/Xulane/Twirla) since the engine has no patch-
+    # specific rules yet. Both are routed to the widened Claude fallback
+    # prompt for STRUCTURED guidance - the frontend then renders correct
+    # steps, backup card, and timeline just like for a known product.
+    _needs_fallback = pill_type(scenario.product) in {
+        PillType.UNKNOWN,
+        PillType.PATCH,
+    }
+    if _needs_fallback:
         result, message = guidance_fallback.fallback_guidance(
             parsed, result, client=client
         )

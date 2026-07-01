@@ -52,13 +52,18 @@ export const PILLS = [
 // Product ids match the backend product_catalog keys (lowercase, single
 // token) so the engine + fallback route the scenario to the right family.
 
+// Product option lists for non-pill methods. Descriptions match the
+// user-facing style used elsewhere in the app (Catalog and method picker):
+// one to two plain-language sentences sourced from the manufacturer SmPC
+// and FSRH Contraceptive Patch / CHC guidance.
 export const RING_OPTIONS = [
   {
     id: "nuvaring",
     name: "NuvaRing",
     type: "ring",
     regimen: "21+7",
-    userExplainer: "In for 3 weeks, out for the 4th, then start a new one.",
+    userExplainer:
+      "A flexible vaginal ring you wear inside your body for 3 weeks, then remove for 1 week to have your period.",
   },
 ];
 
@@ -67,22 +72,25 @@ export const PATCH_OPTIONS = [
     id: "evra",
     name: "Evra",
     type: "patch",
-    regimen: "3 weekly + 1 patch-free",
-    userExplainer: "Apply a new patch each week for 3 weeks, then 1 patch-free week.",
+    regimen: "weekly",
+    userExplainer:
+      "A weekly skin patch (estrogen + progestogen). Apply a new patch on the same day each week for 3 weeks, then have 1 patch-free week.",
   },
   {
     id: "xulane",
     name: "Xulane",
     type: "patch",
-    regimen: "3 weekly + 1 patch-free",
-    userExplainer: "Generic of Evra. Same weekly regimen with 1 patch-free week.",
+    regimen: "weekly",
+    userExplainer:
+      "A weekly skin patch that's the generic version of Evra. Same regimen: 3 weekly patches, then 1 patch-free week.",
   },
   {
     id: "twirla",
     name: "Twirla",
     type: "patch",
-    regimen: "3 weekly + 1 patch-free",
-    userExplainer: "Levonorgestrel patch. Weekly, with 1 patch-free week after 3.",
+    regimen: "weekly",
+    userExplainer:
+      "A weekly skin patch with levonorgestrel. Apply a new patch each week for 3 weeks, then have 1 patch-free week.",
   },
 ];
 

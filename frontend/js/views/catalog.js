@@ -16,11 +16,18 @@ const TYPE_LABELS = {
   progestogen_only: "Progestogen-only pills",
   extended_cycle: "Extended-cycle pills",
   ring: "Vaginal ring",
+  patch: "Contraceptive patches",
 };
 
 // Display order so the catalog reads "everyday combined first, then POPs,
-// then extended-cycle, then non-pill methods".
-const TYPE_ORDER = ["combined", "progestogen_only", "extended_cycle", "ring"];
+// then extended-cycle, then non-pill methods (ring, then patches)".
+const TYPE_ORDER = [
+  "combined",
+  "progestogen_only",
+  "extended_cycle",
+  "ring",
+  "patch",
+];
 
 // Per-type icon for the thumbnail tile when we don't have a real product photo.
 const TYPE_ICONS = {
@@ -28,6 +35,7 @@ const TYPE_ICONS = {
   progestogen_only: "medication",
   extended_cycle: "calendar_month",
   ring: "radio_button_unchecked",
+  patch: "layers",
 };
 
 function capitalize(s) {
