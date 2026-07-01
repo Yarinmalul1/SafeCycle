@@ -2,8 +2,13 @@
 
 These tests exercise ``ai.guidance_fallback.fallback_guidance`` directly with a
 mocked Anthropic client, so they cover behaviours the API-level tests can't
-see when the function is stubbed out (disclaimer enforcement and graceful
-degradation when Claude is unreachable).
+see when the function is stubbed out:
+
+- The function returns a ``(GuidanceResult, message)`` tuple - the frontend
+  renderer needs the structured result to build steps / backup / timeline.
+- Disclaimer is enforced on the message even if the model omits it.
+- Graceful degradation to ``SAFE_DEFAULT_GUIDANCE`` + ``SAFE_DEFAULT_MESSAGE``
+  when Claude is unreachable or returns an empty response.
 """
 
 from __future__ import annotations
@@ -17,8 +22,14 @@ from unittest.mock import MagicMock  # noqa: E402
 import anthropic  # noqa: E402
 
 from ai import guidance_fallback  # noqa: E402
-from ai.guidance_fallback import DISCLAIMER, SAFE_DEFAULT, fallback_guidance  # noqa: E402
-from models import ParsedScenario  # noqa: E402
+from ai.guidance_fallback import (  # noqa: E402
+    DISCLAIMER,
+    SAFE_DEFAULT_GUIDANCE,
+    SAFE_DEFAULT_MESSAGE,
+    FallbackOutput,
+    fallback_guidance,
+)
+from models import GuidanceResult, ParsedScenario, RiskLevel  # noqa: E402
 
 
 def _scenario() -> ParsedScenario:
@@ -34,48 +45,100 @@ def _scenario() -> ParsedScenario:
     )
 
 
-def _client_returning(text: str) -> MagicMock:
-    """Build a stub Anthropic client whose messages.create returns `text`."""
+def _client_returning_parsed(payload: FallbackOutput) -> MagicMock:
+    """Stub Anthropic client whose messages.parse returns `payload`."""
     client = MagicMock()
-    text_block = MagicMock()
-    text_block.type = "text"
-    text_block.text = text
-    client.messages.create.return_value = MagicMock(content=[text_block])
+    client.messages.parse.return_value = MagicMock(parsed_output=payload)
     return client
 
 
 def _client_raising(exc: Exception) -> MagicMock:
     client = MagicMock()
-    client.messages.create.side_effect = exc
+    client.messages.parse.side_effect = exc
     return client
 
 
+def _valid_payload(**overrides) -> FallbackOutput:
+    base = dict(
+        riskLevel=RiskLevel.MODERATE,
+        takePillNow=True,
+        useBackup=True,
+        backupDays=7,
+        considerEmergencyContraception=False,
+        skipPlaceboBreak=False,
+        summary="Reapply the patch now and use backup for 7 days.",
+        notes=["Patches can lose adhesion; check placement daily."],
+        message="Reapply a patch now and use condoms for the next 7 days.",
+    )
+    base.update(overrides)
+    return FallbackOutput(**base)
+
+
+def test_returns_tuple_of_guidance_and_message():
+    client = _client_returning_parsed(_valid_payload())
+    result = fallback_guidance(_scenario(), engine_result=None, client=client)
+    assert isinstance(result, tuple)
+    guidance, message = result
+    assert isinstance(guidance, GuidanceResult)
+    assert isinstance(message, str)
+
+
+def test_structured_fields_flow_through_to_guidance_result():
+    payload = _valid_payload(
+        useBackup=True,
+        backupDays=7,
+        considerEmergencyContraception=True,
+        notes=["Note A", "Note B"],
+    )
+    client = _client_returning_parsed(payload)
+    guidance, _ = fallback_guidance(_scenario(), engine_result=None, client=client)
+    assert guidance.useBackup is True
+    assert guidance.backupDays == 7
+    assert guidance.considerEmergencyContraception is True
+    assert guidance.notes == ["Note A", "Note B"]
+
+
+def test_backup_days_zeroed_when_useBackup_false():
+    # Guard against the model saying "no backup needed" but also emitting a
+    # non-zero backupDays. The frontend would then render a bogus timeline
+    # row. We normalise this at the boundary.
+    payload = _valid_payload(useBackup=False, backupDays=7)
+    client = _client_returning_parsed(payload)
+    guidance, _ = fallback_guidance(_scenario(), engine_result=None, client=client)
+    assert guidance.useBackup is False
+    assert guidance.backupDays == 0
+
+
 def test_disclaimer_appended_when_model_omits_it():
-    # The system prompt asks the model to include the disclaimer, but if it
-    # doesn't, the function must add it itself.
-    client = _client_returning("Use barrier backup for the next 7 days.")
-    msg = fallback_guidance(_scenario(), engine_result=None, client=client)
-    assert DISCLAIMER in msg
+    payload = _valid_payload(message="Reapply the patch and use backup for 7 days.")
+    client = _client_returning_parsed(payload)
+    _, message = fallback_guidance(_scenario(), engine_result=None, client=client)
+    assert DISCLAIMER in message
 
 
 def test_disclaimer_not_duplicated_when_model_already_included_it():
-    text = f"Use backup for 7 days. {DISCLAIMER}"
-    client = _client_returning(text)
-    msg = fallback_guidance(_scenario(), engine_result=None, client=client)
-    assert msg.count(DISCLAIMER) == 1
+    payload = _valid_payload(message=f"Reapply now and use backup. {DISCLAIMER}")
+    client = _client_returning_parsed(payload)
+    _, message = fallback_guidance(_scenario(), engine_result=None, client=client)
+    assert message.count(DISCLAIMER) == 1
 
 
-def test_returns_safe_default_with_disclaimer_when_claude_unreachable():
-    # APIConnectionError is one of the two failure modes the function catches.
+def test_returns_safe_default_when_claude_unreachable():
     err = anthropic.APIConnectionError(request=MagicMock())
     client = _client_raising(err)
-    msg = fallback_guidance(_scenario(), engine_result=None, client=client)
-    assert msg == SAFE_DEFAULT
-    assert DISCLAIMER in msg
+    guidance, message = fallback_guidance(
+        _scenario(), engine_result=None, client=client
+    )
+    assert guidance == SAFE_DEFAULT_GUIDANCE
+    assert message == SAFE_DEFAULT_MESSAGE
+    assert DISCLAIMER in message
 
 
-def test_returns_safe_default_when_claude_returns_empty_response():
-    # Empty/whitespace-only model output must also fall through to SAFE_DEFAULT.
-    client = _client_returning("   ")
-    msg = fallback_guidance(_scenario(), engine_result=None, client=client)
-    assert msg == SAFE_DEFAULT
+def test_returns_safe_default_when_claude_returns_no_parsed_output():
+    client = MagicMock()
+    client.messages.parse.return_value = MagicMock(parsed_output=None)
+    guidance, message = fallback_guidance(
+        _scenario(), engine_result=None, client=client
+    )
+    assert guidance == SAFE_DEFAULT_GUIDANCE
+    assert message == SAFE_DEFAULT_MESSAGE

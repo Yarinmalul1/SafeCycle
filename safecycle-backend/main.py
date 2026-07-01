@@ -186,11 +186,18 @@ def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceRespon
     scenario = _to_pill_scenario(parsed)
     result = engine.evaluate(scenario)
 
-    # Unknown products land in the engine's "unsupported" branch; instead of
-    # showing the canned "speak to a pharmacist" string, ask Claude to generate
-    # safe, scenario-specific guidance.
+    # Unknown products land in the engine's "unsupported" branch. The engine
+    # returns a generic MODERATE result there; if we handed that straight to
+    # the frontend, adaptGuidance would build misleading steps ("Take the
+    # most recent missed or late pill" for a patch) and a dangerous timeline
+    # ("No backup needed - you're protected"). Instead we ask Claude for
+    # STRUCTURED guidance and use its shape - the frontend then renders the
+    # correct steps, backup card, and timeline just like it does for a
+    # known product.
     if pill_type(scenario.product) is PillType.UNKNOWN:
-        message = guidance_fallback.fallback_guidance(parsed, result, client=client)
+        result, message = guidance_fallback.fallback_guidance(
+            parsed, result, client=client
+        )
         source = "fallback"
     else:
         message = answer_phraser.phrase(result, client=client)

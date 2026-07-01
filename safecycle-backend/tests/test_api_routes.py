@@ -68,11 +68,31 @@ def _stub_phraser(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _stub_fallback(monkeypatch):
-    """Avoid real LLM calls in the Claude fallback path."""
-    monkeypatch.setattr(
-        "main.guidance_fallback.fallback_guidance",
-        lambda scenario, engine_result, client: "FALLBACK: AI-generated guidance.",
-    )
+    """Avoid real LLM calls in the Claude fallback path.
+
+    Fallback now returns a (GuidanceResult, message) tuple - the structured
+    guidance is what the frontend renderer needs. The stub mirrors that
+    shape with a MODERATE-risk 7-day-backup default so route tests can
+    assert on the response shape without a real LLM call.
+    """
+    from models import GuidanceResult, RiskLevel
+
+    def _stub(scenario, engine_result, client):
+        return (
+            GuidanceResult(
+                riskLevel=RiskLevel.MODERATE,
+                takePillNow=True,
+                useBackup=True,
+                backupDays=7,
+                considerEmergencyContraception=False,
+                skipPlaceboBreak=False,
+                summary="FALLBACK stub summary.",
+                notes=["FALLBACK stub note."],
+            ),
+            "FALLBACK: AI-generated guidance.",
+        )
+
+    monkeypatch.setattr("main.guidance_fallback.fallback_guidance", _stub)
 
 
 @pytest.fixture(autouse=True)
