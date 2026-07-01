@@ -38,6 +38,52 @@ CATALOG: dict[str, tuple[PillType, str, str]] = {
         "A combined pill with a shorter break: 24 active pills, then 4 inactive "
         "days for a shorter bleed, then a new pack.",
     ),
+    # Source: Bayer Microgynon 30 SmPC; FSRH CHC guidance. EE 30 mcg +
+    # levonorgestrel 150 mcg. One of the most widely prescribed CHCs in
+    # the UK.
+    "microgynon 30": (
+        PillType.COMBINED,
+        "21+7",
+        "A combined pill (ethinylestradiol + levonorgestrel). Take one each "
+        "day for 21 days, then have a 7-day break for your period before "
+        "starting a new pack.",
+    ),
+    # Source: Consilient Health Rigevidon SmPC; FSRH CHC guidance.
+    # Bioequivalent generic of Microgynon 30 (EE 30 mcg + LNG 150 mcg).
+    "rigevidon": (
+        PillType.COMBINED,
+        "21+7",
+        "A combined pill and the generic version of Microgynon 30 (same "
+        "ethinylestradiol + levonorgestrel dose). Take one each day for 21 "
+        "days, then have a 7-day break for your period.",
+    ),
+    # Source: Organon Marvelon SmPC; FSRH CHC guidance. EE 30 mcg +
+    # desogestrel 150 mcg.
+    "marvelon": (
+        PillType.COMBINED,
+        "21+7",
+        "A combined pill (ethinylestradiol + desogestrel). Take one each day "
+        "for 21 days, then have a 7-day break for your period.",
+    ),
+    # Source: Janssen Cilest SmPC; FSRH CHC guidance. EE 35 mcg +
+    # norgestimate 250 mcg. Withdrawn from parts of Europe post-2018 but
+    # still cited in older prescriptions and equivalent to Cilique.
+    "cilest": (
+        PillType.COMBINED,
+        "21+7",
+        "A combined pill (ethinylestradiol + norgestimate). Take one each "
+        "day for 21 days, then have a 7-day break for your period.",
+    ),
+    # Source: Loestrin 30 SmPC; FSRH CHC guidance. Low-dose combined
+    # (EE 30 mcg + norethisterone acetate 1.5 mg). Loestrin 20 was
+    # withdrawn from the UK in 2020; the name in daily use now refers
+    # to Loestrin 30.
+    "loestrin": (
+        PillType.COMBINED,
+        "21+7",
+        "A low-dose combined pill (ethinylestradiol + norethisterone). Take "
+        "one each day for 21 days, then have a 7-day break for your period.",
+    ),
     # ---- Progestogen-only pills ------------------------------------------
     # Source: Organon/Merck Cerazette SmPC; FSRH POP guidance.
     # Desogestrel 75 mcg, continuous, 12-hour missed-pill window.
@@ -54,6 +100,35 @@ CATALOG: dict[str, tuple[PillType, str, str]] = {
         "continuous",
         "A progestogen-only mini-pill you take every day with no break. "
         "Stricter than newer mini-pills - only 3 hours late counts as missed.",
+    ),
+    # Source: Pfizer Noriday SmPC; FSRH POP guidance. Norethisterone
+    # 350 mcg, continuous, 3-hour missed-pill window (same class as
+    # Micronor).
+    "noriday": (
+        PillType.PROGESTOGEN_ONLY,
+        "continuous",
+        "A progestogen-only mini-pill (norethisterone). Take one every day "
+        "with no break - only 3 hours late counts as missed.",
+    ),
+    # Source: Consilient Health Hana SmPC (MHRA-approved OTC POP from
+    # 2021); FSRH POP guidance. Desogestrel 75 mcg, continuous, 12-hour
+    # window - the wider window comes from stronger ovulation
+    # suppression than older POPs.
+    "hana": (
+        PillType.PROGESTOGEN_ONLY,
+        "continuous",
+        "A progestogen-only mini-pill (desogestrel), available over the "
+        "counter. Take one every day with no break. It has a 12-hour "
+        "window if you're late.",
+    ),
+    # Source: Maxwellia Lovima SmPC (MHRA-approved OTC POP from 2021);
+    # FSRH POP guidance. Same desogestrel 75 mcg profile as Hana.
+    "lovima": (
+        PillType.PROGESTOGEN_ONLY,
+        "continuous",
+        "A progestogen-only mini-pill (desogestrel), available over the "
+        "counter. Take one every day with no break. It has a 12-hour "
+        "window if you're late.",
     ),
     # ---- Extended-cycle combined pills -----------------------------------
     # Source: Teva Seasonique SmPC; FSRH extended/continuous CHC guidance.
@@ -123,6 +198,8 @@ SUPPORTED_TYPES: set[PillType] = {
 DEFAULT_POP_WINDOW_HOURS = 3
 POP_WINDOW_HOURS: dict[str, int] = {
     "cerazette": 12,
+    "hana": 12,
+    "lovima": 12,
 }
 
 
