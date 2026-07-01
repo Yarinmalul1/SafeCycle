@@ -92,9 +92,7 @@ export const HomeCardsView = {
           Start new conversation privately
         </button>
 
-        <h2 class="subtitle" style="margin-top:var(--space-2)">Latest &amp; recent updates</h2>
-
-        <div class="dash-grid">
+        <div class="dash-grid" style="margin-top:var(--space-3)">
           ${CARDS.map(
             (c, i) => `
             <div class="dash-card">
