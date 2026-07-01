@@ -53,7 +53,12 @@
       var host = window.location.hostname;
       if (host === "localhost" || host === "127.0.0.1") {
         window.SAFECYCLE_API_BASE = "http://localhost:8000";
+      } else if (host === "safecycle-frontend-production.up.railway.app") {
+        // Production frontend -> production backend. No trailing slash.
+        window.SAFECYCLE_API_BASE =
+          "https://safecycle-backend-production.up.railway.app";
       } else {
+        // Staging (and any other Railway-hosted frontend) -> staging backend.
         window.SAFECYCLE_API_BASE =
           "https://backend-staging-staging-64b6.up.railway.app";
       }

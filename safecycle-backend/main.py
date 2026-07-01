@@ -80,15 +80,16 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS: allow the local dev server (serve.js on :5500) and the deployed
-# Railway staging frontend. No trailing slashes -- browsers compare Origin
-# headers byte-for-byte. Production frontend (when it lands on main) should
-# be appended here or supplied via the SAFECYCLE_EXTRA_CORS_ORIGINS env var
-# (comma-separated) so we don't need a redeploy to add another host.
+# CORS: allow the local dev server (serve.js on :5500), the Railway staging
+# frontend, and the Railway production frontend. No trailing slashes --
+# browsers compare Origin headers byte-for-byte. Additional hosts can be
+# supplied via SAFECYCLE_EXTRA_CORS_ORIGINS (comma-separated) so PR
+# previews or a custom domain can be added without a redeploy.
 _DEFAULT_CORS_ORIGINS = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     "https://frontend-staging-staging-a212.up.railway.app",
+    "https://safecycle-frontend-production.up.railway.app",
 ]
 _extra = os.getenv("SAFECYCLE_EXTRA_CORS_ORIGINS", "").strip()
 _EXTRA_CORS_ORIGINS = [o.strip() for o in _extra.split(",") if o.strip()]
