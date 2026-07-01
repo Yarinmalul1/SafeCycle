@@ -32,6 +32,7 @@ class PillType(str, Enum):
     PROGESTOGEN_ONLY = "progestogen_only"  # mini-pill
     EXTENDED_CYCLE = "extended_cycle"  # combined pill taken in long (e.g. 84-day) cycles
     RING = "ring"  # vaginal ring (not a pill, but shares the catalog/engine)
+    PATCH = "patch"  # transdermal contraceptive patch (Evra, Xulane, Twirla)
     UNKNOWN = "unknown"
 
 

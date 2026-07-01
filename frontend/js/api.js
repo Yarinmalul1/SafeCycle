@@ -7,9 +7,64 @@
    signed-in user's id, so no separate save endpoint is needed -- the
    result screen shows a "Saved to history" confirmation link. */
 
-// Base URL of the FastAPI backend. Override at runtime by setting
-// window.SAFECYCLE_API_BASE before this module loads (e.g. in index.html).
-const API_BASE = (typeof window !== "undefined" && window.SAFECYCLE_API_BASE) || "http://localhost:8000";
+// Base URL of the FastAPI backend. Must NOT have a trailing slash --
+// requests are built as `${API_BASE}${path}` and `path` always starts with
+// "/", so a trailing slash would produce e.g. ".../api//auth/google".
+//
+// The deployed frontend MUST hit the public Railway backend, not localhost.
+// Hostname mapping pairs each known frontend with its backend; anything that
+// looks like a Railway domain but doesn't match exactly still falls back to
+// the staging backend rather than localhost, so a subdomain rename, custom
+// domain, or proxy can't silently revert sign-in to a broken localhost call.
+//
+// Resolution order:
+//   1. window.SAFECYCLE_API_BASE        -- runtime override (index.html).
+//   2. Exact hostname match             -- known frontend -> known backend.
+//   3. Any *.railway.app host           -- staging backend fallback.
+//   4. localhost / 127.0.0.1            -- local dev (`python main.py`).
+//   5. Anything else                    -- staging backend, with a console
+//                                          warning so it's diagnosable.
+const STAGING_FRONTEND_HOST = "frontend-staging-staging-a212.up.railway.app";
+const STAGING_BACKEND_URL = "https://backend-staging-staging-64b6.up.railway.app";
+const LOCAL_BACKEND_URL = "http://localhost:8000";
+
+function defaultApiBase() {
+  if (typeof window === "undefined") return LOCAL_BACKEND_URL;
+  const host = window.location.hostname;
+
+  // 2. Exact pairing -- the primary, intended mapping.
+  if (host === STAGING_FRONTEND_HOST) return STAGING_BACKEND_URL;
+
+  // 3. Defensive fallback for any other Railway-hosted frontend (preview
+  //    deploys, renamed subdomains, etc.). Keeps sign-in working even if
+  //    the exact hostname above ever drifts.
+  if (host.endsWith(".up.railway.app") || host.endsWith(".railway.app")) {
+    return STAGING_BACKEND_URL;
+  }
+
+  // 4. Local dev.
+  if (host === "localhost" || host === "127.0.0.1") return LOCAL_BACKEND_URL;
+
+  // 5. Unknown host (custom domain, ngrok, etc.). Prefer the real backend
+  //    over a broken localhost call; warn so it's visible in DevTools.
+  if (window.console && window.console.warn) {
+    window.console.warn(
+      `[SafeCycle] Unknown hostname "${host}"; falling back to staging backend ${STAGING_BACKEND_URL}.`
+    );
+  }
+  return STAGING_BACKEND_URL;
+}
+
+const API_BASE =
+  (typeof window !== "undefined" && window.SAFECYCLE_API_BASE) || defaultApiBase();
+
+// Surface the resolved base URL once on load so it's trivial to verify in
+// DevTools that the sign-in POST will land on the right host.
+if (typeof window !== "undefined" && window.console && window.console.info) {
+  window.console.info(
+    `[SafeCycle] API_BASE = ${API_BASE} (hostname: ${window.location.hostname})`
+  );
+}
 
 const FAKE_LATENCY = 450; // ms - mimic a network round-trip for realistic UI
 
@@ -201,14 +256,38 @@ function sessionToParsedScenario(session) {
   const WEEK = { week1: 1, week2: 2, week3: 3 };
   const MISSED = { "1": 1, "2+": 2, "0": 0 };
 
+  // Patch flow captures cause and duration under different question ids
+  // from the pill flow. Map "never-applied" to pillsMissed=1 (never worn
+  // = no protection today); everything else maps hoursLate as normal.
+  const patchNeverApplied = a.patchCause === "never-applied";
+
   return {
     product: session.product?.id || null,
     hoursLate: a.hoursLate in HOURS ? HOURS[a.hoursLate] : null,
-    pillsMissed: a.missedCount in MISSED ? MISSED[a.missedCount] : null,
+    pillsMissed: patchNeverApplied
+      ? 1
+      : a.missedCount in MISSED
+      ? MISSED[a.missedCount]
+      : null,
     cycleWeek: a.packWeek in WEEK ? WEEK[a.packWeek] : null,
     unprotectedSex: a.redFlags ? a.redFlags === "ubp" : null,
     confidence: 1.0, // these are explicit user selections, not inferred
     clarifyingQuestion: null,
+  };
+}
+
+/** In-progress switching session -> backend MethodSwitchScenario.
+    Maps the four switching questions (fromMethod / toMethod / switchReason
+    / startWhen) to what the backend engine needs. `switchReason` is
+    captured but not sent - the engine doesn't reason on it. */
+function sessionToSwitchScenario(session) {
+  const a = session.answers || {};
+  const GAP = { immediately: 0, soon: 3, "next-week": 7, longer: 14 };
+  return {
+    fromMethod: a.fromMethod,
+    toMethod: a.toMethod,
+    gapDays: a.startWhen in GAP ? GAP[a.startWhen] : 0,
+    unprotectedSex: false,
   };
 }
 
@@ -244,7 +323,13 @@ function adaptGuidance(resp, session) {
     message: resp.message,
     disclaimer:
       "This is general information based on common contraceptive guidance - not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
-    product: session.product?.name || "Your method",
+    product:
+      session.product?.name ||
+      // For the switching flow there's no product; use the
+      // human-friendly form of `fromMethod` if available.
+      (session.answers?.fromMethod
+        ? String(session.answers.fromMethod).replaceAll("_", " ")
+        : "Your method"),
   };
 }
 
@@ -292,6 +377,22 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sessionToParsedScenario(session)),
+    });
+    return adaptGuidance(resp, session);
+  },
+
+  /**
+   * Method-switching engine (via the backend).
+   * POST /api/switch-guidance <MethodSwitchScenario> -> GuidanceResponse
+   * Same response shape as /api/guidance so the Result view renders it
+   * with the same adapter. The switching engine has its own rules for
+   * gap days and overlap safety.
+   */
+  async getSwitchGuidance(session) {
+    const resp = await request("/api/switch-guidance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sessionToSwitchScenario(session)),
     });
     return adaptGuidance(resp, session);
   },

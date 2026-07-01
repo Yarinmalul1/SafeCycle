@@ -10,7 +10,6 @@ const SITUATIONS = [
   { id: "missed-pill", icon: "event_busy", title: "I missed a pill", desc: "Forgot one or more active pills" },
   { id: "late-dose", icon: "schedule", title: "I'm late taking it", desc: "Took it late, or not sure how late" },
   { id: "switching", icon: "published_with_changes", title: "I'm switching methods", desc: "Changing pill, ring, or patch" },
-  { id: "unsure", icon: "help_outline", title: "Something else", desc: "Not sure how to describe it" },
 ];
 
 export const HomeView = {
@@ -95,8 +94,15 @@ export const HomeView = {
         el.querySelectorAll("[data-situation]").forEach((btn) =>
           btn.addEventListener("click", () => {
             state.reset();
-            state.update({ situation: btn.dataset.situation });
-            router.go("/method");
+            const situation = btn.dataset.situation;
+            state.update({ situation });
+            // Switching is method-neutral - both from/to methods are asked
+            // in /questions itself - so skip the method picker.
+            if (situation === "switching") {
+              router.go("/questions");
+            } else {
+              router.go("/method");
+            }
           })
         );
 

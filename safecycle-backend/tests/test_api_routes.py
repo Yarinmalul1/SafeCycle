@@ -68,11 +68,31 @@ def _stub_phraser(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _stub_fallback(monkeypatch):
-    """Avoid real LLM calls in the Claude fallback path."""
-    monkeypatch.setattr(
-        "main.guidance_fallback.fallback_guidance",
-        lambda scenario, engine_result, client: "FALLBACK: AI-generated guidance.",
-    )
+    """Avoid real LLM calls in the Claude fallback path.
+
+    Fallback now returns a (GuidanceResult, message) tuple - the structured
+    guidance is what the frontend renderer needs. The stub mirrors that
+    shape with a MODERATE-risk 7-day-backup default so route tests can
+    assert on the response shape without a real LLM call.
+    """
+    from models import GuidanceResult, RiskLevel
+
+    def _stub(scenario, engine_result, client):
+        return (
+            GuidanceResult(
+                riskLevel=RiskLevel.MODERATE,
+                takePillNow=True,
+                useBackup=True,
+                backupDays=7,
+                considerEmergencyContraception=False,
+                skipPlaceboBreak=False,
+                summary="FALLBACK stub summary.",
+                notes=["FALLBACK stub note."],
+            ),
+            "FALLBACK: AI-generated guidance.",
+        )
+
+    monkeypatch.setattr("main.guidance_fallback.fallback_guidance", _stub)
 
 
 @pytest.fixture(autouse=True)
@@ -247,10 +267,18 @@ def test_guidance_without_unprotected_sex_is_not_high_risk():
     assert guidance["considerEmergencyContraception"] is False
 
 
-def test_guidance_missing_product_returns_422():
+def test_guidance_missing_product_routes_to_fallback():
+    # A missing product used to 422 with "Which contraceptive product is this
+    # about?", which the frontend surfaced as "We couldn't work out your steps".
+    # It now substitutes an UNSPECIFIED placeholder so the engine returns
+    # UNKNOWN and the Claude fallback prompt produces sourced guidance for
+    # the user - no more 422.
     response = client.post("/api/guidance", json=_parsed(product=None))
-    assert response.status_code == 422
-    assert "product" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "fallback"
+    # Fallback path still returns the full GuidanceResponse shape.
+    assert {"guidance", "message", "source"} <= body.keys()
 
 
 def test_guidance_missing_cycle_week_for_combined_pill_returns_422():
@@ -676,6 +704,17 @@ def test_auth_google_rejects_unverified_email():
     response = client.post("/api/auth/google", json={"credential": token})
     assert response.status_code == 401
     assert "verified" in response.json()["detail"].lower()
+
+
+def test_auth_google_get_redirects_to_frontend_instead_of_405():
+    # GETs on /api/auth/google previously 405'd (the real flow is POST-only),
+    # which surfaced as noise in Railway logs from Google Console verification
+    # probes / address-bar visits. Now we bounce them back to the sign-in
+    # page on the frontend.
+    response = client.get("/api/auth/google", follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers.get("location", "")
+    assert location.startswith("https://") or location.startswith("http://")
 
 
 # --------------------------------------------------------------------------- #

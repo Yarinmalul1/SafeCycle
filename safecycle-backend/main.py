@@ -18,8 +18,8 @@ from datetime import date, datetime, timedelta
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import RedirectResponse, Response
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,10 +30,12 @@ from ai import (
     chat as chat_module,
     guidance_fallback,
     history_manager,
+    input_parser,
     product_catalog,
     question_generator,
     safety_filter,
 )
+from ai.input_parser import PARSER_SYSTEM
 from ai.product_catalog import pill_type
 from db import calendars, chats, queries, sessions, users
 from logic import calendar as calendar_generator
@@ -78,10 +80,22 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Allow the static frontend dev server (serve.js on :5500) to call the API.
+# CORS: allow the local dev server (serve.js on :5500) and the deployed
+# Railway staging frontend. No trailing slashes -- browsers compare Origin
+# headers byte-for-byte. Production frontend (when it lands on main) should
+# be appended here or supplied via the SAFECYCLE_EXTRA_CORS_ORIGINS env var
+# (comma-separated) so we don't need a redeploy to add another host.
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "https://frontend-staging-staging-a212.up.railway.app",
+]
+_extra = os.getenv("SAFECYCLE_EXTRA_CORS_ORIGINS", "").strip()
+_EXTRA_CORS_ORIGINS = [o.strip() for o in _extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500"],
+    allow_origins=_DEFAULT_CORS_ORIGINS + _EXTRA_CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -103,28 +117,8 @@ def health() -> dict:
 # --------------------------------------------------------------------------- #
 # Input Parser role — endpoint
 # --------------------------------------------------------------------------- #
-PARSER_SYSTEM = (
-    "You are the Input Parser for SafeCycle, a contraception guidance app. "
-    "Your only job is to convert the user's free-text description of a "
-    "contraception scenario into the structured schema. "
-    "Rules:\n"
-    "- Normalize the product name to lowercase (e.g. 'Yasmin' -> 'yasmin').\n"
-    "- Only extract values the user actually states or clearly implies; never "
-    "invent timing, counts, or products. Leave unmentioned fields null.\n"
-    "- 'hoursLate' is for a pill taken late; 'pillsMissed' is for pills fully "
-    "skipped. These are different — do not conflate them.\n"
-    "- Set 'unprotectedSex' to true or false only if the user indicates whether "
-    "unprotected sex occurred during the at-risk window; leave it null if not "
-    "mentioned.\n"
-    "- Set 'confidence' to reflect how certain you are about the extraction "
-    "(1.0 = explicit and unambiguous, lower when you had to infer).\n"
-    "- If essential information is missing or ambiguous (e.g. no product, or it "
-    "is unclear whether a pill was late vs. missed), set 'clarifyingQuestion' to "
-    "one concise question. Otherwise set it to null.\n"
-    "Do NOT give medical advice, risk levels, or recommendations — only parse."
-)
-
-
+# PARSER_SYSTEM is imported from ai.input_parser so the extraction rules live
+# next to the ParsedScenario schema they populate.
 @app.post("/api/parse-input", response_model=ParsedScenario)
 def parse_input(req: ParseInputRequest) -> ParsedScenario:
     """Parse a user's contraception scenario into a structured object."""
@@ -150,27 +144,39 @@ def parse_input(req: ParseInputRequest) -> ParsedScenario:
 # --------------------------------------------------------------------------- #
 # Guidance role — endpoint
 # --------------------------------------------------------------------------- #
+# Placeholder product id used when the user has no specific brand to name.
+# The engine returns UNKNOWN for it, which routes the request into the
+# widened Claude fallback prompt - the intended path for an unspecified
+# method. Frontend also uses this exact id when the "I don't know" method
+# is picked, so the pipeline is coherent end-to-end.
+UNSPECIFIED_PRODUCT = "unspecified"
+
+
 def _to_pill_scenario(parsed: ParsedScenario) -> PillScenario:
     """Narrow a parsed scenario into the engine's validated `PillScenario`.
 
-    The engine always needs a product. cycleWeek is only meaningful for combined
-    pills (their rules branch on week 1/2/3/4); progestogen-only pills, the
-    vaginal ring, and extended-cycle pills ignore it. We therefore only demand
-    cycleWeek when the product is a combined pill.
+    The engine always needs a product. When the caller sends none - either
+    the frontend didn't collect one, or the parser couldn't extract one from
+    free text - we substitute the placeholder ``UNSPECIFIED_PRODUCT`` rather
+    than 422. That keeps the pipeline moving so the fallback prompt still
+    produces sourced, structured guidance instead of the user seeing a "Try
+    again" error card.
+
+    cycleWeek is only meaningful for combined pills (their rules branch on
+    week 1/2/3/4). Progestogen-only pills, ring, patch, and extended-cycle
+    pills ignore it. For a combined pill without a cycleWeek we ask a
+    clarifying question via 422 - this is a genuinely un-answerable case
+    (rules differ by week) so passing it silently through would be unsafe.
     """
-    if not parsed.product:
-        raise HTTPException(
-            status_code=422,
-            detail="Which contraceptive product is this about?",
-        )
-    if pill_type(parsed.product) is PillType.COMBINED and parsed.cycleWeek is None:
+    product = parsed.product or UNSPECIFIED_PRODUCT
+    if pill_type(product) is PillType.COMBINED and parsed.cycleWeek is None:
         raise HTTPException(
             status_code=422,
             detail="Which week of your pill pack are you in (1-4)?",
         )
     try:
         return PillScenario(
-            product=parsed.product,
+            product=product,
             cycleWeek=parsed.cycleWeek,
             pillsMissed=parsed.pillsMissed or 0,
             hoursLate=parsed.hoursLate,
@@ -192,11 +198,20 @@ def guidance(parsed: ParsedScenario, user_id: str = DEMO_USER) -> GuidanceRespon
     scenario = _to_pill_scenario(parsed)
     result = engine.evaluate(scenario)
 
-    # Unknown products land in the engine's "unsupported" branch; instead of
-    # showing the canned "speak to a pharmacist" string, ask Claude to generate
-    # safe, scenario-specific guidance.
-    if pill_type(scenario.product) is PillType.UNKNOWN:
-        message = guidance_fallback.fallback_guidance(parsed, result, client=client)
+    # Products the engine has no rule set for land in its "unsupported"
+    # branch. UNKNOWN products (an unrecognised brand) obviously; PATCH
+    # products too (Evra/Xulane/Twirla) since the engine has no patch-
+    # specific rules yet. Both are routed to the widened Claude fallback
+    # prompt for STRUCTURED guidance - the frontend then renders correct
+    # steps, backup card, and timeline just like for a known product.
+    _needs_fallback = pill_type(scenario.product) in {
+        PillType.UNKNOWN,
+        PillType.PATCH,
+    }
+    if _needs_fallback:
+        result, message = guidance_fallback.fallback_guidance(
+            parsed, result, client=client
+        )
         source = "fallback"
     else:
         message = answer_phraser.phrase(result, client=client)
@@ -345,6 +360,39 @@ def auth_google(req: GoogleAuthRequest) -> AuthUser:
         ) from exc
 
     return AuthUser(name=name, email=email, userId=row["id"])
+
+
+# Default frontend URL the auth GET handler bounces visitors back to. The
+# real flow never hits the GET path (see auth_google_get below), but if
+# someone lands here -- Google OAuth Console verification probe, a redirect
+# URI configured against the code flow, or a developer pasting the URL into
+# the address bar -- we'd rather send them to the sign-in page than 405.
+_DEFAULT_FRONTEND_URL = "https://frontend-staging-staging-a212.up.railway.app"
+
+
+@app.get("/api/auth/google", include_in_schema=False)
+def auth_google_get(request: Request) -> RedirectResponse:
+    """Defensive handler so GETs on /api/auth/google don't 405.
+
+    SafeCycle's real auth flow is:
+        client (Google Identity Services) -> ID token (JWT) -> POST here.
+    Nothing in the app issues a GET to this URL. But three things in the
+    wild do, and each previously surfaced as a noisy 405 in Railway logs:
+
+      1. Google OAuth Console verification probes the redirect URI(s)
+         configured on the OAuth client.
+      2. A misconfigured authorization-code-flow redirect URI sends the
+         user back here with ``?code=...`` instead of completing the
+         implicit flow on the client.
+      3. A developer pastes the backend URL into the browser address bar.
+
+    In every case the right answer is "go back to the frontend and sign in
+    there" -- which is what this 302 does. The target URL is the staging
+    frontend by default, overridable per environment via
+    ``SAFECYCLE_FRONTEND_URL`` (production should set this on Railway).
+    """
+    target = os.getenv("SAFECYCLE_FRONTEND_URL", _DEFAULT_FRONTEND_URL).rstrip("/")
+    return RedirectResponse(url=f"{target}/", status_code=302)
 
 
 # --------------------------------------------------------------------------- #

@@ -43,12 +43,88 @@ export const PILLS = [
   { id: "unknown-pill", name: "I don't know my pill", type: "unknown", regimen: "unknown", userExplainer: "We'll route you to the safest, most cautious guidance." },
 ];
 
+// ---- Non-pill methods -----------------------------------------------------
+// Users on the ring or the patch previously had no product picker at all, so
+// state.session.product stayed null and /api/guidance 422'd on the missing
+// product. The lists below give each non-pill method a small, real choice
+// set so a product id is always sent to the backend.
+//
+// Product ids match the backend product_catalog keys (lowercase, single
+// token) so the engine + fallback route the scenario to the right family.
+
+// Product option lists for non-pill methods. Descriptions match the
+// user-facing style used elsewhere in the app (Catalog and method picker):
+// one to two plain-language sentences sourced from the manufacturer SmPC
+// and FSRH Contraceptive Patch / CHC guidance.
+export const RING_OPTIONS = [
+  {
+    id: "nuvaring",
+    name: "NuvaRing",
+    type: "ring",
+    regimen: "21+7",
+    userExplainer:
+      "A flexible vaginal ring you wear inside your body for 3 weeks, then remove for 1 week to have your period.",
+  },
+];
+
+export const PATCH_OPTIONS = [
+  {
+    id: "evra",
+    name: "Evra",
+    type: "patch",
+    regimen: "weekly",
+    userExplainer:
+      "A weekly skin patch (estrogen + progestogen). Apply a new patch on the same day each week for 3 weeks, then have 1 patch-free week.",
+  },
+  {
+    id: "xulane",
+    name: "Xulane",
+    type: "patch",
+    regimen: "weekly",
+    userExplainer:
+      "A weekly skin patch that's the generic version of Evra. Same regimen: 3 weekly patches, then 1 patch-free week.",
+  },
+  {
+    id: "twirla",
+    name: "Twirla",
+    type: "patch",
+    regimen: "weekly",
+    userExplainer:
+      "A weekly skin patch with levonorgestrel. Apply a new patch each week for 3 weeks, then have 1 patch-free week.",
+  },
+];
+
+// When a user picks "I don't know" method, we still send a product id so the
+// backend can respond. The id doesn't match any known product, so the engine
+// returns UNKNOWN and the Claude fallback prompt takes over with sourced
+// safe defaults - the intended behaviour for an unspecified method.
+export const UNKNOWN_METHOD_PRODUCT = {
+  id: "unspecified",
+  name: "Unspecified method",
+  type: "unknown",
+  regimen: "unknown",
+  userExplainer: "We'll use the safest, most cautious guidance.",
+};
+
 export function findProduct(id) {
-  return PILLS.find((p) => p.id === id) || null;
+  return (
+    PILLS.find((p) => p.id === id) ||
+    RING_OPTIONS.find((p) => p.id === id) ||
+    PATCH_OPTIONS.find((p) => p.id === id) ||
+    (UNKNOWN_METHOD_PRODUCT.id === id ? UNKNOWN_METHOD_PRODUCT : null)
+  );
 }
 
 export function searchPills(query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return PILLS;
   return PILLS.filter((p) => p.name.toLowerCase().includes(q));
+}
+
+// Returns the option list for a non-pill method, or [] if the method has no
+// picker (e.g. an unrecognised method id).
+export function productsForMethod(methodId) {
+  if (methodId === "ring") return RING_OPTIONS;
+  if (methodId === "patch") return PATCH_OPTIONS;
+  return [];
 }

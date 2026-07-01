@@ -2,7 +2,11 @@
    Read-only reference (the "smart patient leaflet" catalog).
    Methods come from a small static list (generic device families). Specific
    products are fetched from the backend's /api/products so there is one
-   source of truth for what the engine actually supports. */
+   source of truth for what the engine actually supports.
+
+   Layout: each category is a collapsible accordion (native <details>) so
+   the catalog opens compact and users expand only the sections they need.
+   Item content itself is unchanged. */
 import { router } from "../router.js";
 import { api } from "../api.js";
 import { METHODS } from "../data/products.js";
@@ -16,11 +20,18 @@ const TYPE_LABELS = {
   progestogen_only: "Progestogen-only pills",
   extended_cycle: "Extended-cycle pills",
   ring: "Vaginal ring",
+  patch: "Contraceptive patches",
 };
 
 // Display order so the catalog reads "everyday combined first, then POPs,
-// then extended-cycle, then non-pill methods".
-const TYPE_ORDER = ["combined", "progestogen_only", "extended_cycle", "ring"];
+// then extended-cycle, then non-pill methods (ring, then patches)".
+const TYPE_ORDER = [
+  "combined",
+  "progestogen_only",
+  "extended_cycle",
+  "ring",
+  "patch",
+];
 
 // Per-type icon for the thumbnail tile when we don't have a real product photo.
 const TYPE_ICONS = {
@@ -28,6 +39,7 @@ const TYPE_ICONS = {
   progestogen_only: "medication",
   extended_cycle: "calendar_month",
   ring: "radio_button_unchecked",
+  patch: "layers",
 };
 
 function capitalize(s) {
@@ -70,6 +82,19 @@ function productItem(p, variant) {
     </div>`;
 }
 
+/* Render one collapsible section (native <details>). Collapsed by default
+   because the `open` attribute is intentionally omitted. */
+function accordion(label, bodyHtml) {
+  return `
+    <details class="cat-accordion">
+      <summary class="cat-accordion__summary">
+        <span class="subtitle cat-accordion__label">${escapeHtml(label)}</span>
+        <span class="cat-accordion__chevron material-symbols-outlined" aria-hidden="true">expand_more</span>
+      </summary>
+      <div class="cat-accordion__body">${bodyHtml}</div>
+    </details>`;
+}
+
 function renderProducts(products) {
   // Group by type, then render in the canonical order. Unknown types are
   // dropped silently so a stray backend value can't break the screen.
@@ -83,16 +108,16 @@ function renderProducts(products) {
     const items = byType.get(type);
     if (!items || !items.length) continue;
     const variant = type === "progestogen_only" ? "cat-thumb--alt" : "";
-    sections.push(`
-      <h2 class="subtitle">${TYPE_LABELS[type]}</h2>
-      <div class="list">${items.map((p) => productItem(p, variant)).join("")}</div>
-    `);
+    const list = `<div class="list">${items.map((p) => productItem(p, variant)).join("")}</div>`;
+    sections.push(accordion(TYPE_LABELS[type], list));
   }
   return sections.join("");
 }
 
 export const CatalogView = {
   render() {
+    const methodsList = `<div class="list">${METHODS.filter((m) => m.id !== "unknown").map(methodItem).join("")}</div>`;
+
     return {
       title: "Catalog",
       html: `
@@ -102,10 +127,7 @@ export const CatalogView = {
             you're using.</p>
         </div>
 
-        <h2 class="subtitle">Methods</h2>
-        <div class="list">
-          ${METHODS.filter((m) => m.id !== "unknown").map(methodItem).join("")}
-        </div>
+        ${accordion("Methods", methodsList)}
 
         <div id="catalog-products">
           <div class="empty"><p class="muted">Loading products…</p></div>
