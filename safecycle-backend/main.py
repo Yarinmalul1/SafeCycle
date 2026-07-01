@@ -30,10 +30,12 @@ from ai import (
     chat as chat_module,
     guidance_fallback,
     history_manager,
+    input_parser,
     product_catalog,
     question_generator,
     safety_filter,
 )
+from ai.input_parser import PARSER_SYSTEM
 from ai.product_catalog import pill_type
 from db import calendars, chats, queries, sessions, users
 from logic import calendar as calendar_generator
@@ -115,28 +117,8 @@ def health() -> dict:
 # --------------------------------------------------------------------------- #
 # Input Parser role — endpoint
 # --------------------------------------------------------------------------- #
-PARSER_SYSTEM = (
-    "You are the Input Parser for SafeCycle, a contraception guidance app. "
-    "Your only job is to convert the user's free-text description of a "
-    "contraception scenario into the structured schema. "
-    "Rules:\n"
-    "- Normalize the product name to lowercase (e.g. 'Yasmin' -> 'yasmin').\n"
-    "- Only extract values the user actually states or clearly implies; never "
-    "invent timing, counts, or products. Leave unmentioned fields null.\n"
-    "- 'hoursLate' is for a pill taken late; 'pillsMissed' is for pills fully "
-    "skipped. These are different — do not conflate them.\n"
-    "- Set 'unprotectedSex' to true or false only if the user indicates whether "
-    "unprotected sex occurred during the at-risk window; leave it null if not "
-    "mentioned.\n"
-    "- Set 'confidence' to reflect how certain you are about the extraction "
-    "(1.0 = explicit and unambiguous, lower when you had to infer).\n"
-    "- If essential information is missing or ambiguous (e.g. no product, or it "
-    "is unclear whether a pill was late vs. missed), set 'clarifyingQuestion' to "
-    "one concise question. Otherwise set it to null.\n"
-    "Do NOT give medical advice, risk levels, or recommendations — only parse."
-)
-
-
+# PARSER_SYSTEM is imported from ai.input_parser so the extraction rules live
+# next to the ParsedScenario schema they populate.
 @app.post("/api/parse-input", response_model=ParsedScenario)
 def parse_input(req: ParseInputRequest) -> ParsedScenario:
     """Parse a user's contraception scenario into a structured object."""
