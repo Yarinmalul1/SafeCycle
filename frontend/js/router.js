@@ -84,9 +84,12 @@ export const router = {
     }
     document.title = out.title ? `${out.title} · SafeCycle` : "SafeCycle";
 
-    // Bottom nav shows on every page except the welcome/landing page.
-    document.getElementById("bottom-nav").hidden = isHome;
-    document.getElementById("app").classList.toggle("no-nav", isHome);
+    // Bottom nav shows on every page except the pre-sign-in surfaces
+    // (welcome + the public "Learn how SafeCycle works" info page), which
+    // are info-only and have no signed-in destinations to navigate to.
+    const hideNav = PUBLIC_ROUTES.has(path);
+    document.getElementById("bottom-nav").hidden = hideNav;
+    document.getElementById("app").classList.toggle("no-nav", hideNav);
 
     // Highlight the active bottom-nav item.
     const navKey =
