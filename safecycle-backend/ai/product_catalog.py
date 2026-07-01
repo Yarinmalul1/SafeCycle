@@ -69,6 +69,37 @@ CATALOG: dict[str, tuple[PillType, str, str]] = {
         "21+7",
         "A flexible vaginal ring. In for 3 weeks, out for the 4th, then start a new one.",
     ),
+    # Contraceptive patches. Family type is PillType.UNKNOWN on purpose:
+    # the deterministic engine has no patch rules yet, so main.guidance()
+    # routes UNKNOWN products through the Claude fallback prompt, which
+    # was widened in the AI prompt-refinement pass to give sourced patch
+    # guidance (reapply now / 7-day barrier / EC if the last 5 days
+    # included unprotected sex). Once engine rules land, flip these to a
+    # dedicated PillType.PATCH and slot them into SUPPORTED_TYPES.
+    #
+    # Source: Janssen (Xulane / Ortho Evra) and Bayer Evra SmPCs; FSRH
+    # Contraceptive Patch guidance (2019, updated 2022). Both patches
+    # deliver ethinylestradiol ~20 mcg/day + norelgestromin ~150 mcg/day.
+    # Regimen: apply a new patch every 7 days for 3 weeks, then have one
+    # patch-free week (withdrawal bleed).
+    "evra": (
+        PillType.UNKNOWN,
+        "3 weekly patches + 1 patch-free week",
+        "A weekly skin patch. Apply a new patch on the same day each week for 3 weeks, then have 1 patch-free week.",
+    ),
+    "xulane": (
+        PillType.UNKNOWN,
+        "3 weekly patches + 1 patch-free week",
+        "A weekly skin patch (generic of Evra). Apply a new patch each week for 3 weeks, then have 1 patch-free week.",
+    ),
+    # Source: Agile Therapeutics Twirla SmPC / FDA prescribing info; FSRH
+    # CHC guidance. Delivers EE ~30 mcg/day + levonorgestrel ~120 mcg/day.
+    # Same weekly regimen as Evra/Xulane. FDA-labelled for BMI < 30.
+    "twirla": (
+        PillType.UNKNOWN,
+        "3 weekly patches + 1 patch-free week",
+        "A weekly skin patch with levonorgestrel. Apply a new patch each week for 3 weeks, then have 1 patch-free week.",
+    ),
 }
 
 # Product families the logic engine currently has a rule set for.
