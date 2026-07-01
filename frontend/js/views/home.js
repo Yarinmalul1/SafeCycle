@@ -95,8 +95,15 @@ export const HomeView = {
         el.querySelectorAll("[data-situation]").forEach((btn) =>
           btn.addEventListener("click", () => {
             state.reset();
-            state.update({ situation: btn.dataset.situation });
-            router.go("/method");
+            const situation = btn.dataset.situation;
+            state.update({ situation });
+            // Switching is method-neutral - both from/to methods are asked
+            // in /questions itself - so skip the method picker.
+            if (situation === "switching") {
+              router.go("/questions");
+            } else {
+              router.go("/method");
+            }
           })
         );
 

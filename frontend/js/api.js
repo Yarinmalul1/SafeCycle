@@ -256,14 +256,38 @@ function sessionToParsedScenario(session) {
   const WEEK = { week1: 1, week2: 2, week3: 3 };
   const MISSED = { "1": 1, "2+": 2, "0": 0 };
 
+  // Patch flow captures cause and duration under different question ids
+  // from the pill flow. Map "never-applied" to pillsMissed=1 (never worn
+  // = no protection today); everything else maps hoursLate as normal.
+  const patchNeverApplied = a.patchCause === "never-applied";
+
   return {
     product: session.product?.id || null,
     hoursLate: a.hoursLate in HOURS ? HOURS[a.hoursLate] : null,
-    pillsMissed: a.missedCount in MISSED ? MISSED[a.missedCount] : null,
+    pillsMissed: patchNeverApplied
+      ? 1
+      : a.missedCount in MISSED
+      ? MISSED[a.missedCount]
+      : null,
     cycleWeek: a.packWeek in WEEK ? WEEK[a.packWeek] : null,
     unprotectedSex: a.redFlags ? a.redFlags === "ubp" : null,
     confidence: 1.0, // these are explicit user selections, not inferred
     clarifyingQuestion: null,
+  };
+}
+
+/** In-progress switching session -> backend MethodSwitchScenario.
+    Maps the four switching questions (fromMethod / toMethod / switchReason
+    / startWhen) to what the backend engine needs. `switchReason` is
+    captured but not sent - the engine doesn't reason on it. */
+function sessionToSwitchScenario(session) {
+  const a = session.answers || {};
+  const GAP = { immediately: 0, soon: 3, "next-week": 7, longer: 14 };
+  return {
+    fromMethod: a.fromMethod,
+    toMethod: a.toMethod,
+    gapDays: a.startWhen in GAP ? GAP[a.startWhen] : 0,
+    unprotectedSex: false,
   };
 }
 
@@ -299,7 +323,13 @@ function adaptGuidance(resp, session) {
     message: resp.message,
     disclaimer:
       "This is general information based on common contraceptive guidance - not a diagnosis, prescription, or medical advice. If unsure, contact a clinician.",
-    product: session.product?.name || "Your method",
+    product:
+      session.product?.name ||
+      // For the switching flow there's no product; use the
+      // human-friendly form of `fromMethod` if available.
+      (session.answers?.fromMethod
+        ? String(session.answers.fromMethod).replaceAll("_", " ")
+        : "Your method"),
   };
 }
 
@@ -347,6 +377,22 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sessionToParsedScenario(session)),
+    });
+    return adaptGuidance(resp, session);
+  },
+
+  /**
+   * Method-switching engine (via the backend).
+   * POST /api/switch-guidance <MethodSwitchScenario> -> GuidanceResponse
+   * Same response shape as /api/guidance so the Result view renders it
+   * with the same adapter. The switching engine has its own rules for
+   * gap days and overlap safety.
+   */
+  async getSwitchGuidance(session) {
+    const resp = await request("/api/switch-guidance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sessionToSwitchScenario(session)),
     });
     return adaptGuidance(resp, session);
   },

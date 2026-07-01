@@ -11,8 +11,11 @@ export const QuestionsView = {
   render(params) {
     const s = state.session;
 
-    // Guard: must have a method to ask questions.
-    if (!s.method) {
+    // Guard: normal (missed / late / method-based) flows need a method
+    // before they can ask questions. Switching is method-neutral - the
+    // switching questions themselves gather from/to methods - so it
+    // doesn't need a method preselected.
+    if (!s.method && s.situation !== "switching") {
       router.go("/method");
       return { title: "", html: "", showBack: false };
     }

@@ -47,7 +47,10 @@ function buildTimeline(result) {
 export const ResultView = {
   render() {
     const s = state.session;
-    if (!s.method) {
+    // Switching is method-neutral (both from/to methods are asked in
+    // /questions), so the "no method" guard doesn't apply to it. Every
+    // other flow still requires a method.
+    if (!s.method && s.situation !== "switching") {
       router.go("/");
       return { title: "", html: "", showBack: false };
     }
@@ -67,7 +70,15 @@ export const ResultView = {
         // table and the user would see the same answer with a fresh latency.
         let result = state.session.result;
         try {
-          if (!result) result = await api.getGuidance(s, state.user?.userId);
+          if (!result) {
+            // Switching goes to a different endpoint (/api/switch-guidance)
+            // that has its own deterministic engine for method transitions.
+            // Both return the same GuidanceResponse shape so the rest of
+            // this view is identical.
+            result = s.situation === "switching"
+              ? await api.getSwitchGuidance(s)
+              : await api.getGuidance(s, state.user?.userId);
+          }
         } catch (err) {
           el.querySelector("#result-loading").hidden = true;
           const body = el.querySelector("#result-body");
