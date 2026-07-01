@@ -1116,3 +1116,45 @@
     overflow: hidden;
   }
 }
+
+/* ============================================================
+   Catalog accordion
+   Native <details>/<summary> so each category collapses without
+   any JS. Rows and thumbnails inside the body are unchanged; the
+   accordion adds header + chevron + open/close behaviour only.
+   ============================================================ */
+.cat-accordion {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-3);
+}
+.cat-accordion:last-of-type {
+  border-bottom: 1px solid var(--color-border);
+}
+.cat-accordion__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  cursor: pointer;
+  list-style: none; /* Firefox hides the default triangle. */
+}
+/* Chrome / Safari: also hide the default disclosure triangle. */
+.cat-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+.cat-accordion__label {
+  /* Reuses .subtitle typography set above; nothing extra to add. */
+  margin: 0;
+}
+.cat-accordion__chevron {
+  transition: transform 150ms ease;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.cat-accordion[open] .cat-accordion__chevron {
+  transform: rotate(180deg);
+}
+.cat-accordion__body {
+  padding-bottom: var(--space-3);
+}
