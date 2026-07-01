@@ -10,7 +10,6 @@ const SITUATIONS = [
   { id: "missed-pill", icon: "event_busy", title: "I missed a pill", desc: "Forgot one or more active pills" },
   { id: "late-dose", icon: "schedule", title: "I'm late taking it", desc: "Took it late, or not sure how late" },
   { id: "switching", icon: "published_with_changes", title: "I'm switching methods", desc: "Changing pill, ring, or patch" },
-  { id: "unsure", icon: "help_outline", title: "Something else", desc: "Not sure how to describe it" },
 ];
 
 export const HomeView = {
