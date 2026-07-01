@@ -43,12 +43,80 @@ export const PILLS = [
   { id: "unknown-pill", name: "I don't know my pill", type: "unknown", regimen: "unknown", userExplainer: "We'll route you to the safest, most cautious guidance." },
 ];
 
+// ---- Non-pill methods -----------------------------------------------------
+// Users on the ring or the patch previously had no product picker at all, so
+// state.session.product stayed null and /api/guidance 422'd on the missing
+// product. The lists below give each non-pill method a small, real choice
+// set so a product id is always sent to the backend.
+//
+// Product ids match the backend product_catalog keys (lowercase, single
+// token) so the engine + fallback route the scenario to the right family.
+
+export const RING_OPTIONS = [
+  {
+    id: "nuvaring",
+    name: "NuvaRing",
+    type: "ring",
+    regimen: "21+7",
+    userExplainer: "In for 3 weeks, out for the 4th, then start a new one.",
+  },
+];
+
+export const PATCH_OPTIONS = [
+  {
+    id: "evra",
+    name: "Evra",
+    type: "patch",
+    regimen: "3 weekly + 1 patch-free",
+    userExplainer: "Apply a new patch each week for 3 weeks, then 1 patch-free week.",
+  },
+  {
+    id: "xulane",
+    name: "Xulane",
+    type: "patch",
+    regimen: "3 weekly + 1 patch-free",
+    userExplainer: "Generic of Evra. Same weekly regimen with 1 patch-free week.",
+  },
+  {
+    id: "twirla",
+    name: "Twirla",
+    type: "patch",
+    regimen: "3 weekly + 1 patch-free",
+    userExplainer: "Levonorgestrel patch. Weekly, with 1 patch-free week after 3.",
+  },
+];
+
+// When a user picks "I don't know" method, we still send a product id so the
+// backend can respond. The id doesn't match any known product, so the engine
+// returns UNKNOWN and the Claude fallback prompt takes over with sourced
+// safe defaults - the intended behaviour for an unspecified method.
+export const UNKNOWN_METHOD_PRODUCT = {
+  id: "unspecified",
+  name: "Unspecified method",
+  type: "unknown",
+  regimen: "unknown",
+  userExplainer: "We'll use the safest, most cautious guidance.",
+};
+
 export function findProduct(id) {
-  return PILLS.find((p) => p.id === id) || null;
+  return (
+    PILLS.find((p) => p.id === id) ||
+    RING_OPTIONS.find((p) => p.id === id) ||
+    PATCH_OPTIONS.find((p) => p.id === id) ||
+    (UNKNOWN_METHOD_PRODUCT.id === id ? UNKNOWN_METHOD_PRODUCT : null)
+  );
 }
 
 export function searchPills(query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return PILLS;
   return PILLS.filter((p) => p.name.toLowerCase().includes(q));
+}
+
+// Returns the option list for a non-pill method, or [] if the method has no
+// picker (e.g. an unrecognised method id).
+export function productsForMethod(methodId) {
+  if (methodId === "ring") return RING_OPTIONS;
+  if (methodId === "patch") return PATCH_OPTIONS;
+  return [];
 }
