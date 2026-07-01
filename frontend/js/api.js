@@ -594,7 +594,7 @@ export const api = {
             id,
             summary: e.summary,
             description: e.description,
-            start: { dateTime: startsAt, timeZone: "UTC" },
+            start: { dateTime: new Date(startsAt).toISOString(), timeZone: "UTC" },
             end: { dateTime: endsAt, timeZone: "UTC" },
           }),
         }
