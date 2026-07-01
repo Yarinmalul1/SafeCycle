@@ -267,10 +267,18 @@ def test_guidance_without_unprotected_sex_is_not_high_risk():
     assert guidance["considerEmergencyContraception"] is False
 
 
-def test_guidance_missing_product_returns_422():
+def test_guidance_missing_product_routes_to_fallback():
+    # A missing product used to 422 with "Which contraceptive product is this
+    # about?", which the frontend surfaced as "We couldn't work out your steps".
+    # It now substitutes an UNSPECIFIED placeholder so the engine returns
+    # UNKNOWN and the Claude fallback prompt produces sourced guidance for
+    # the user - no more 422.
     response = client.post("/api/guidance", json=_parsed(product=None))
-    assert response.status_code == 422
-    assert "product" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "fallback"
+    # Fallback path still returns the full GuidanceResponse shape.
+    assert {"guidance", "message", "source"} <= body.keys()
 
 
 def test_guidance_missing_cycle_week_for_combined_pill_returns_422():

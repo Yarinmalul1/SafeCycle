@@ -144,27 +144,39 @@ def parse_input(req: ParseInputRequest) -> ParsedScenario:
 # --------------------------------------------------------------------------- #
 # Guidance role — endpoint
 # --------------------------------------------------------------------------- #
+# Placeholder product id used when the user has no specific brand to name.
+# The engine returns UNKNOWN for it, which routes the request into the
+# widened Claude fallback prompt - the intended path for an unspecified
+# method. Frontend also uses this exact id when the "I don't know" method
+# is picked, so the pipeline is coherent end-to-end.
+UNSPECIFIED_PRODUCT = "unspecified"
+
+
 def _to_pill_scenario(parsed: ParsedScenario) -> PillScenario:
     """Narrow a parsed scenario into the engine's validated `PillScenario`.
 
-    The engine always needs a product. cycleWeek is only meaningful for combined
-    pills (their rules branch on week 1/2/3/4); progestogen-only pills, the
-    vaginal ring, and extended-cycle pills ignore it. We therefore only demand
-    cycleWeek when the product is a combined pill.
+    The engine always needs a product. When the caller sends none - either
+    the frontend didn't collect one, or the parser couldn't extract one from
+    free text - we substitute the placeholder ``UNSPECIFIED_PRODUCT`` rather
+    than 422. That keeps the pipeline moving so the fallback prompt still
+    produces sourced, structured guidance instead of the user seeing a "Try
+    again" error card.
+
+    cycleWeek is only meaningful for combined pills (their rules branch on
+    week 1/2/3/4). Progestogen-only pills, ring, patch, and extended-cycle
+    pills ignore it. For a combined pill without a cycleWeek we ask a
+    clarifying question via 422 - this is a genuinely un-answerable case
+    (rules differ by week) so passing it silently through would be unsafe.
     """
-    if not parsed.product:
-        raise HTTPException(
-            status_code=422,
-            detail="Which contraceptive product is this about?",
-        )
-    if pill_type(parsed.product) is PillType.COMBINED and parsed.cycleWeek is None:
+    product = parsed.product or UNSPECIFIED_PRODUCT
+    if pill_type(product) is PillType.COMBINED and parsed.cycleWeek is None:
         raise HTTPException(
             status_code=422,
             detail="Which week of your pill pack are you in (1-4)?",
         )
     try:
         return PillScenario(
-            product=parsed.product,
+            product=product,
             cycleWeek=parsed.cycleWeek,
             pillsMissed=parsed.pillsMissed or 0,
             hoursLate=parsed.hoursLate,
